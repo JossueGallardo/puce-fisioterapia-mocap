@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://github.com/freemocap/freemocap/assets/15314521/da1af7fe-f808-43dc-8f59-c579715d6593" height="160" alt="FreeMoCap Logo">
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/logo_puce.png" height="160" alt="PUCE Logo">
+  <img src="https://www.puce.edu.ec/wp-content/uploads/2020/09/logo3.png" height="120" alt="PUCE Logo">
 </p>
 
 <h2 align="center">PUCE MoCap Fisioterapia</h2>
@@ -55,15 +55,11 @@ La licencia original del proyecto es **AGPLv3**, la cual se mantiene en este for
 
 ## Logo institucional
 
-El logo institucional de la PUCE debe ubicarse en la carpeta `assets` con el siguiente nombre:
+El proyecto utiliza el logo institucional de la Pontificia Universidad Católica del Ecuador desde el sitio oficial de la PUCE.
 
-```text
-assets/logo_puce.png
-```
-
-Vista del logo en el README:
-
-![PUCE Logo](assets/logo_puce.png)
+<p align="center">
+  <img src="https://www.puce.edu.ec/wp-content/uploads/2020/09/logo3.png" height="120" alt="PUCE Logo">
+</p>
 
 ---
 
@@ -272,9 +268,6 @@ Este fork será personalizado con:
 ```text
 puce-fisioterapia-mocap/
 │
-├── assets/
-│   └── logo_puce.png
-│
 ├── freemocap/
 │
 ├── README.md
@@ -357,5 +350,3 @@ Ver archivo `LICENSE` para más información.
 - OpenPose: https://github.com/CMU-Perceptual-Computing-Lab/openpose
 - EasyMocap: https://github.com/zju3dv/EasyMocap
 - Open Mocap Blender: https://github.com/Larenju-Rai/open-mocap-blender
-```bash
-pip install freemocap
