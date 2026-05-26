@@ -160,3 +160,16 @@ freemocap/system/gui_state.json
 dist-electron/
 */.claude/*
 *.vite/
+
+# PUCE MoCap - datos locales y sensibles
+sesiones/*
+!sesiones/.gitkeep
+reports/*
+!reports/.gitkeep
+reports/*.csv
+reports/*.pdf
+reportes/
+perfiles_reales/
+datos_pacientes/
+*.mov
+*.mkv

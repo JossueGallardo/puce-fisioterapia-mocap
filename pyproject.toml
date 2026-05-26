@@ -124,6 +124,18 @@ freemocap = "freemocap.__main__:main"
 [tool.setuptools]
 py-modules = ["freemocap"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [
+    ".git",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    "freemocap/tests",
+]
+
 [tool.black]
 line-length = 120
 

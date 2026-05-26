@@ -1,352 +1,272 @@
-<p align="center">
-  <img src="https://github.com/freemocap/freemocap/assets/15314521/da1af7fe-f808-43dc-8f59-c579715d6593" height="160" alt="FreeMoCap Logo">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="https://www.puce.edu.ec/wp-content/uploads/2020/09/logo3.png" height="120" alt="PUCE Logo">
-</p>
+# PUCE MoCap Fisioterapia — Fe y Alegría
 
-<h2 align="center">PUCE MoCap Fisioterapia</h2>
-
-<h4 align="center">
 Sistema de captura de movimiento para apoyar procesos de rehabilitación fisioterapéutica comunitaria, basado en FreeMoCap.
-</h4>
 
----
+Este repositorio es un fork y adaptación académica de **FreeMoCap — Free Motion Capture for Everyone**. El objetivo es construir, de forma incremental, herramientas simples para analizar movimiento humano mediante cámaras convencionales, ángulos articulares y reportes básicos de seguimiento.
 
-## Descripción del proyecto
+> Nota etica: este software es una herramienta de apoyo academico/comunitario. No reemplaza la evaluacion de un fisioterapeuta, no emite diagnosticos medicos y no debe usarse para guardar datos reales de pacientes en GitHub.
 
-Este proyecto consiste en la adaptación de **FreeMoCap** para crear un sistema de captura y análisis de movimiento orientado a fisioterapia comunitaria.
+## Créditos y Origen
 
-El sistema busca apoyar la evaluación de ejercicios físicos, movimientos terapéuticos y análisis de marcha mediante cámaras convencionales, cálculo de ángulos articulares y generación de reportes básicos para seguimiento fisioterapéutico.
+- Proyecto base: **FreeMoCap — Free Motion Capture for Everyone**
+- Repositorio original: https://github.com/freemocap/freemocap
+- Sitio oficial: https://freemocap.org
+- Autores: Jon Matthis y equipo FreeMoCap
+- Licencia original: **AGPLv3**
 
-El proyecto se desarrolla como parte del programa de **Vinculación con la Comunidad** de la **Pontificia Universidad Católica del Ecuador**, en colaboración con **Fe y Alegría Ecuador**.
+Este fork mantiene la licencia AGPLv3 y conserva la trazabilidad hacia el proyecto original FreeMoCap. No se deben eliminar archivos legales, creditos, codigo de conducta ni referencias al proyecto base.
 
----
-
-## Créditos y origen del proyecto
-
-Este repositorio es un fork y adaptación del proyecto original:
-
-**FreeMoCap — Free Motion Capture for Everyone**  
-Repositorio original: https://github.com/freemocap/freemocap  
-Sitio web: https://freemocap.org  
-
-FreeMoCap fue desarrollado por **Jon Matthis** y el equipo **FreeMoCap**.
-
-La licencia original del proyecto es **AGPLv3**, la cual se mantiene en este fork.
-
----
-
-## Identificación institucional
+## Identificación Institucional
 
 - Institución: Pontificia Universidad Católica del Ecuador
 - Programa: Vinculación con la Comunidad
 - Contraparte: Fe y Alegría Ecuador
 - Año: 2026
-
----
-
-## Estudiante desarrollador
-
-- Nombre: Jossue Hermel Gallardo Toro
+- Estudiante desarrollador: Jossue Hermel Gallardo Toro
 - Carrera: Ingeniería en Sistemas de Información
 - Tutor: RODRIGUEZ CLAVIJO FRANCISCO
 
----
+Los logos institucionales reales deben agregarse manualmente en `assets/`:
 
-## Logo institucional
+- `assets/logo_puce.png`
+- `assets/logo_fe_alegria.png`
 
-El proyecto utiliza el logo institucional de la Pontificia Universidad Católica del Ecuador desde el sitio oficial de la PUCE.
+No se incluyen logos descargados de internet en este repositorio.
 
-<p align="center">
-  <img src="https://www.puce.edu.ec/wp-content/uploads/2020/09/logo3.png" height="120" alt="PUCE Logo">
-</p>
+## Descripción del Sistema
 
----
+PUCE MoCap Fisioterapia — Fe y Alegría busca adaptar FreeMoCap para apoyar actividades de fisioterapia comunitaria. El sistema se orienta a:
 
-## Objetivo general
+- Capturar movimiento corporal con una o varias camaras.
+- Usar coordenadas 3D del esqueleto para calcular angulos articulares.
+- Evaluar ejercicios fisicos y terapeuticos con mensajes claros en español.
+- Documentar sesiones de prueba sin almacenar datos sensibles en el repositorio.
+- Preparar una base tecnica para analisis de marcha en caminadora.
 
-Adaptar un sistema de captura de movimiento basado en FreeMoCap para analizar movimientos corporales en ejercicios físicos, rehabilitación fisioterapéutica y marcha en caminadora, con el propósito de apoyar procesos de evaluación y seguimiento en comunidades con recursos limitados.
+## Objetivo General
 
----
+Adaptar un sistema de captura de movimiento basado en FreeMoCap para analizar movimientos corporales en ejercicios físicos, rehabilitación fisioterapéutica y marcha en caminadora, con el propósito de apoyar procesos de evaluación y seguimiento comunitario bajo supervisión profesional.
 
-## Objetivos específicos
+## Objetivos Específicos
 
-- Implementar un módulo inicial de análisis de ejercicios físicos mediante cálculo de ángulos articulares.
-- Adaptar el sistema a ejercicios de rehabilitación fisioterapéutica con rangos configurables por paciente.
-- Desarrollar un módulo de análisis de marcha en caminadora utilizando captura de movimiento.
-- Generar reportes básicos de sesión que permitan visualizar el desempeño y progreso del paciente.
-- Personalizar el sistema con identidad institucional de la Pontificia Universidad Católica del Ecuador.
+- Implementar una base de cálculo de ángulos articulares con NumPy.
+- Preparar documentación de instalación y prueba inicial con una cámara.
+- Documentar la configuración multicámara y la calibración con tablero ChArUco.
+- Mantener separada la personalizacion PUCE del nucleo original de FreeMoCap.
+- Preparar el proyecto para modulos posteriores de pesas, rehabilitacion y marcha.
 
----
+## Modulos del Proyecto
 
-## Módulos del proyecto
+### Modulo 1: Analisis de ejercicios con pesas
 
-### Módulo 1: Sistema de análisis de ejercicios con pesas
+Analisis de ejercicios fisicos basicos mediante angulos articulares, indicador correcto/incorrecto y retroalimentacion visual en español. La base de Semana 3 ya esta implementada con datos simulados y reportes CSV.
 
-Este módulo permite analizar ejercicios físicos básicos mediante captura de movimiento y cálculo de ángulos articulares.
+Ejercicios previstos:
 
-Ejercicios considerados:
+- Sentadilla.
+- Press de hombro.
+- Peso muerto.
 
-- Sentadilla
-- Press de hombro
-- Peso muerto
+### Modulo 2: Rehabilitacion fisioterapeutica
 
-Funciones principales:
+Ejercicios terapeuticos con rangos configurables por paciente mediante perfiles JSON y reportes simples. Se implementara desde la Semana 5.
 
-- Captura del movimiento con cámara.
-- Extracción del esqueleto 3D.
-- Cálculo de ángulos articulares.
-- Indicador visual de postura correcta o incorrecta.
-- Texto de retroalimentación para el usuario.
-- Contador de repeticiones.
-- Porcentaje de la sesión en posición correcta.
+Ejercicios previstos:
 
----
+- Flexion de codo.
+- Abduccion de hombro.
+- Rotacion de muñeca.
+- Extension de rodilla.
+- Dorsiflexion de tobillo.
+- Elevacion de pierna recta.
 
-### Módulo 2: Adaptación a rehabilitación fisioterapéutica
+### Modulo 3: Analisis de marcha en caminadora
 
-Este módulo adapta el sistema a ejercicios de fisioterapia, donde los rangos de movimiento dependen del paciente, la lesión y la indicación del fisioterapeuta.
+Analisis de marcha con 2 o 3 camaras, calibracion ChArUco, metricas de simetria y longitud de paso. Se implementara desde la Semana 4.
 
-Ejercicios considerados:
+Metricas previstas:
 
-- Flexión de codo
-- Abducción de hombro
-- Rotación de muñeca
-- Extensión de rodilla
-- Dorsiflexión de tobillo
-- Elevación de pierna recta
+- Inclinacion del tronco.
+- Angulo de rodilla derecha.
+- Angulo de rodilla izquierda.
+- Asimetria entre rodillas.
+- Longitud de paso.
+- Indicador basico de atencion.
 
-Funciones principales:
-
-- Creación de perfiles de pacientes en formato JSON.
-- Configuración de ángulos mínimos y máximos por ejercicio.
-- Registro del ángulo máximo alcanzado.
-- Comparación con sesiones anteriores.
-- Reporte simple en PDF o CSV.
-
-Ejemplo de perfil de paciente:
-
-```python
-perfil_paciente = {
-    "nombre": "Juan Perez",
-    "lesion": "Fractura de radio distal",
-    "ejercicios": {
-        "flexion_codo": {
-            "angulo_minimo": 30,
-            "angulo_maximo": 120,
-            "repeticiones_objetivo": 10
-        }
-    }
-}
-```
-
----
-
-### Módulo 3: Análisis de marcha en caminadora
-
-Este módulo permite analizar la marcha de una persona utilizando varias cámaras y métricas de movimiento.
-
-Métricas consideradas:
-
-- Inclinación del tronco.
-- Ángulo de rodillas.
-- Simetría entre pierna izquierda y derecha.
-- Longitud del paso.
-- Variabilidad del paso.
-- Indicadores básicos de riesgo de caída.
-
-Funciones principales:
-
-- Captura con 2 o 3 cámaras.
-- Calibración con tablero ChArUco.
-- Visualización del esqueleto en tiempo real.
-- Panel de métricas de marcha.
-- Semáforo de alertas.
-- Reporte final de sesión.
-
----
-
-## Tecnologías utilizadas
+## Tecnologias Usadas
 
 - Python 3.10+
 - FreeMoCap
 - NumPy
 - OpenCV
-- Matplotlib
-- JSON
-- Git
-- GitHub
+- PySide6
+- Git y GitHub
+- pytest
+- JSON y CSV para etapas posteriores
 
----
+## Instalacion Base de FreeMoCap
 
-## Instalación base de FreeMoCap
+Instalacion desde PyPI:
 
-Para instalar FreeMoCap se puede utilizar el siguiente comando:
-
-```bash
-pip install freemocap
-```
-
-Para ejecutar la interfaz gráfica:
-
-```bash
+```powershell
+python -m pip install freemocap
 freemocap
 ```
 
-También se puede ejecutar desde el código fuente:
+Ejecucion desde codigo fuente:
 
-```bash
+```powershell
 python -m freemocap
 ```
 
----
-
-## Instalación del proyecto desde este repositorio
+## Instalacion del Fork
 
 Clonar el repositorio:
 
-```bash
+```powershell
 git clone https://github.com/JossueGallardo/puce-fisioterapia-mocap.git
-```
-
-Ingresar a la carpeta del proyecto:
-
-```bash
 cd puce-fisioterapia-mocap
 ```
 
-Crear un entorno virtual:
+Crear y activar entorno virtual en Windows:
 
-```bash
+```powershell
 python -m venv venv
-```
-
-Activar el entorno virtual en Linux o macOS:
-
-```bash
-source venv/bin/activate
-```
-
-Activar el entorno virtual en Windows:
-
-```bash
 venv\Scripts\activate
+python -m pip install --upgrade pip
 ```
 
-Instalar dependencias del proyecto:
+Instalar el proyecto en modo editable:
 
-```bash
+```powershell
 pip install -e .
 ```
 
-Ejecutar FreeMoCap desde el código fuente:
+Ejecutar FreeMoCap:
 
-```bash
+```powershell
 python -m freemocap
 ```
 
----
+Ejecutar pruebas del modulo PUCE:
 
-## Personalización del repositorio
-
-Este fork será personalizado con:
-
-- README institucional.
-- Logo de la Pontificia Universidad Católica del Ecuador.
-- Créditos al proyecto original FreeMoCap.
-- Pantalla de inicio con identidad PUCE.
-- Código para análisis de ángulos articulares.
-- Módulo de ejercicios con pesas.
-- Módulo de rehabilitación fisioterapéutica.
-- Módulo de análisis de marcha en caminadora.
-- Reportes básicos por sesión.
-
----
-
-## Estructura esperada del proyecto
-
-```text
-puce-fisioterapia-mocap/
-│
-├── freemocap/
-│
-├── README.md
-├── LICENSE
-└── ...
+```powershell
+python -m pytest
 ```
 
----
+Ejecutar el ejemplo de calculo de angulos:
 
-## Ejemplo de cálculo de ángulo
-
-El sistema utilizará coordenadas 3D de las articulaciones para calcular ángulos corporales.
-
-```python
-import numpy as np
-
-def calcular_angulo(punto_a, punto_b, punto_c):
-    """
-    Calcula el ángulo en el punto B formado por los puntos A-B-C.
-    Cada punto debe tener coordenadas [x, y, z].
-    """
-    vector_ba = np.array(punto_a) - np.array(punto_b)
-    vector_bc = np.array(punto_c) - np.array(punto_b)
-
-    coseno = np.dot(vector_ba, vector_bc) / (
-        np.linalg.norm(vector_ba) * np.linalg.norm(vector_bc)
-    )
-
-    angulo = np.degrees(np.arccos(np.clip(coseno, -1.0, 1.0)))
-
-    return angulo
+```powershell
+python examples\semana_2_angle_utils_demo.py
 ```
 
-Ejemplo aplicado a una sentadilla:
+Ejecutar el demo de ejercicios con pesas:
 
-```python
-angulo_rodilla = calcular_angulo(cadera, rodilla, tobillo)
-
-if 70 <= angulo_rodilla <= 100:
-    estado = "CORRECTO"
-else:
-    estado = "CORREGIR POSTURA"
+```powershell
+python examples\semana_3_modulo_pesas_demo.py
 ```
 
----
+Ejecutar el demo visual OpenCV del modulo de pesas:
 
-## Cronograma general
+```powershell
+python examples\semana_3_overlay_demo.py
+```
+
+## Estado Actual del Proyecto
+
+Implementado:
+
+- README institucional con creditos a FreeMoCap.
+- Carpeta `assets/` preparada para logos reales.
+- Documentacion de Semana 1 para instalacion y prueba con una camara.
+- Documentacion de Semana 2 para multicamara y calibracion ChArUco.
+- Modulo `puce_mocap.angle_utils` con calculo de angulos 3D.
+- Pruebas unitarias con pytest para calculo de angulos.
+- Ejemplo ejecutable con puntos simulados de rodilla.
+- Base de Semana 3 para ejercicios con pesas: sentadilla, press de hombro y peso muerto.
+- Sesion simple con conteo de repeticiones, porcentaje correcto y reporte CSV.
+- Demo visual OpenCV con identidad PUCE para el modulo de pesas.
+- Carpeta `sesiones/` preparada para pruebas locales no versionadas.
+
+Pendiente manual:
+
+- Agregar logos reales en `assets/`.
+- Instalar dependencias completas de FreeMoCap en el entorno local.
+- Probar fisicamente FreeMoCap con una camara.
+- Probar configuracion multicamara con tablero ChArUco.
+
+## Cronograma Resumido de 7 Semanas
 
 | Semana | Actividad principal | Entregable |
 |---|---|---|
-| Semana 1 | Instalación de FreeMoCap, prueba con una cámara y personalización del repositorio | Repositorio personalizado y sistema corriendo con una cámara |
-| Semana 2 | Configuración de 2 a 3 cámaras, calibración y función de cálculo de ángulos | Sistema multicámara calibrado y función de ángulos validada |
-| Semana 3 | Desarrollo del módulo de ejercicios con pesas | Módulo de pesas completo con identidad PUCE |
-| Semana 4 | Desarrollo del módulo de análisis de marcha en caminadora | Módulo de caminadora funcionando con métricas en pantalla |
-| Semana 5 | Adaptación a fisioterapia con perfiles y reportes | Módulo de fisioterapia completo |
-| Semana 6 | Pruebas integrales y ajustes | Sistema validado en entorno real |
-| Semana 7 | Documentación final y preparación de demo | Repositorio final y demo lista |
+| Semana 1 | Personalizacion inicial, instalacion y prueba con una camara | Repositorio institucional y FreeMoCap probado con una camara |
+| Semana 2 | Funcion de angulos, base de esqueleto 3D, multicamara y ChArUco | Angulos validados y guia multicamara |
+| Semana 3 | Ejercicios con pesas | Modulo de pesas con indicador correcto/incorrecto |
+| Semana 4 | Marcha en caminadora | Metricas de marcha y alertas basicas |
+| Semana 5 | Rehabilitacion con perfiles JSON | Rangos terapeuticos configurables y reporte simple |
+| Semana 6 | Pruebas integrales | Validacion bajo supervision y ajustes |
+| Semana 7 | Documentacion final y demo | Repositorio final y demo lista |
 
----
+## Documentacion del Proyecto
 
-## Estado del proyecto
+- [Semana 1 - Prueba con una camara](docs/semana_1_prueba_una_camara.md)
+- [Semana 2 - Multicamara y calibracion ChArUco](docs/semana_2_multicamara_charuco.md)
+- [Semana 3 - Modulo de ejercicios con pesas](docs/semana_3_modulo_pesas.md)
+- [Assets institucionales](assets/README.md)
 
-Actualmente el proyecto se encuentra en fase inicial de personalización del fork y preparación del entorno de desarrollo.
+## Estructura PUCE Agregada
 
----
+```text
+puce-fisioterapia-mocap/
+├── assets/
+│   ├── .gitkeep
+│   └── README.md
+├── docs/
+│   ├── semana_1_prueba_una_camara.md
+│   └── semana_2_multicamara_charuco.md
+├── examples/
+│   ├── semana_2_angle_utils_demo.py
+│   ├── semana_3_modulo_pesas_demo.py
+│   └── semana_3_overlay_demo.py
+├── puce_mocap/
+│   ├── __init__.py
+│   ├── angle_utils.py
+│   ├── exercise_report.py
+│   ├── exercise_rules.py
+│   └── exercise_session.py
+├── reports/
+│   └── .gitkeep
+├── sesiones/
+│   └── .gitkeep
+└── tests/
+    ├── test_angle_utils.py
+    ├── test_exercise_rules.py
+    └── test_exercise_session.py
+```
+
+## Uso del Modulo de Angulos
+
+```python
+from puce_mocap.angle_utils import calcular_angulo
+
+cadera = [0.0, 1.0, 0.0]
+rodilla = [0.0, 0.0, 0.0]
+tobillo = [1.0, 0.0, 0.0]
+
+angulo_rodilla = calcular_angulo(cadera, rodilla, tobillo)
+print(angulo_rodilla)
+```
+
+## Privacidad y Seguridad
+
+- No subir videos de pacientes al repositorio.
+- No subir reportes reales.
+- No subir perfiles reales con nombres, cedulas, telefonos o direcciones.
+- Usar datos ficticios en ejemplos y pruebas.
+- Toda interpretacion clinica debe quedar bajo supervision de un fisioterapeuta.
 
 ## Licencia
 
-Este proyecto mantiene la licencia original **AGPLv3** de FreeMoCap.
+Este proyecto mantiene la licencia original **GNU Affero General Public License v3.0 (AGPLv3)** de FreeMoCap.
 
-Ver archivo `LICENSE` para más información.
-
----
-
-## Referencias
-
-- FreeMoCap: https://github.com/freemocap/freemocap
-- Sitio oficial de FreeMoCap: https://freemocap.org
-- MediaPipe: https://github.com/google-ai-edge/mediapipe
-- OpenPose: https://github.com/CMU-Perceptual-Computing-Lab/openpose
-- EasyMocap: https://github.com/zju3dv/EasyMocap
-- Open Mocap Blender: https://github.com/Larenju-Rai/open-mocap-blender
+Ver el archivo [LICENSE](LICENSE).
