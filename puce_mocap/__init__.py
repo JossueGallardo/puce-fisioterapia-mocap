@@ -8,6 +8,7 @@ from puce_mocap.exercise_rules import (
     evaluar_sentadilla,
 )
 from puce_mocap.exercise_session import ExerciseSession
+from puce_mocap.freemocap_adapter import evaluar_ejercicio_freemocap, normalizar_articulaciones_freemocap
 
 __all__ = [
     "ExerciseFeedback",
@@ -17,4 +18,6 @@ __all__ = [
     "evaluar_peso_muerto",
     "evaluar_press_hombro",
     "evaluar_sentadilla",
+    "evaluar_ejercicio_freemocap",
+    "normalizar_articulaciones_freemocap",
 ]

@@ -59,7 +59,7 @@ Adaptar un sistema de captura de movimiento basado en FreeMoCap para analizar mo
 
 ### Modulo 1: Analisis de ejercicios con pesas
 
-Analisis de ejercicios fisicos basicos mediante angulos articulares, indicador correcto/incorrecto y retroalimentacion visual en español. La base de Semana 3 ya esta implementada con datos simulados y reportes CSV.
+Analisis de ejercicios fisicos basicos mediante angulos articulares, indicador correcto/incorrecto y retroalimentacion visual en español. La Semana 3 ya incluye base con datos simulados, reporte CSV, demo visual y un prototipo real en vivo con camara usando MediaPipe Pose como complemento.
 
 Ejercicios previstos:
 
@@ -99,6 +99,7 @@ Metricas previstas:
 - FreeMoCap
 - NumPy
 - OpenCV
+- MediaPipe Pose como complemento para prototipo en vivo
 - PySide6
 - Git y GitHub
 - pytest
@@ -172,6 +173,18 @@ Ejecutar el demo visual OpenCV del modulo de pesas:
 python examples\semana_3_overlay_demo.py
 ```
 
+Ejecutar el demo real en vivo con pose:
+
+```powershell
+python examples\semana_3_live_pose_exercise_demo.py
+```
+
+Ejecutar el demo del adaptador FreeMoCap:
+
+```powershell
+python examples\semana_3_freemocap_adapter_demo.py
+```
+
 ## Estado Actual del Proyecto
 
 Implementado:
@@ -186,6 +199,8 @@ Implementado:
 - Base de Semana 3 para ejercicios con pesas: sentadilla, press de hombro y peso muerto.
 - Sesion simple con conteo de repeticiones, porcentaje correcto y reporte CSV.
 - Demo visual OpenCV con identidad PUCE para el modulo de pesas.
+- Prototipo real en vivo de Semana 3 con camara, esqueleto superpuesto y evaluacion de ejercicios.
+- Adaptador inicial para conectar diccionarios 3D de FreeMoCap con las reglas del modulo de pesas.
 - Carpeta `sesiones/` preparada para pruebas locales no versionadas.
 
 Pendiente manual:
@@ -223,9 +238,12 @@ puce-fisioterapia-mocap/
 │   └── README.md
 ├── docs/
 │   ├── semana_1_prueba_una_camara.md
-│   └── semana_2_multicamara_charuco.md
+│   ├── semana_2_multicamara_charuco.md
+│   └── semana_3_modulo_pesas.md
 ├── examples/
 │   ├── semana_2_angle_utils_demo.py
+│   ├── semana_3_freemocap_adapter_demo.py
+│   ├── semana_3_live_pose_exercise_demo.py
 │   ├── semana_3_modulo_pesas_demo.py
 │   └── semana_3_overlay_demo.py
 ├── puce_mocap/
@@ -233,7 +251,8 @@ puce-fisioterapia-mocap/
 │   ├── angle_utils.py
 │   ├── exercise_report.py
 │   ├── exercise_rules.py
-│   └── exercise_session.py
+│   ├── exercise_session.py
+│   └── freemocap_adapter.py
 ├── reports/
 │   └── .gitkeep
 ├── sesiones/
@@ -241,7 +260,8 @@ puce-fisioterapia-mocap/
 └── tests/
     ├── test_angle_utils.py
     ├── test_exercise_rules.py
-    └── test_exercise_session.py
+    ├── test_exercise_session.py
+    └── test_freemocap_adapter.py
 ```
 
 ## Uso del Modulo de Angulos
