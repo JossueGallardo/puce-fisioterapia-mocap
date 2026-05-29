@@ -146,6 +146,20 @@ def dividir_texto(texto: str, ancho_maximo: int, escala: float, grosor: int) -> 
     return lineas
 
 
+def limitar_lineas_texto(texto: str, ancho_maximo: int, escala: float, grosor: int, max_lineas: int) -> list[str]:
+    """Divide texto y compacta el remanente para que no salga del panel."""
+    lineas = dividir_texto(texto, ancho_maximo, escala, grosor)
+    if len(lineas) <= max_lineas:
+        return lineas
+
+    lineas_visibles = lineas[: max_lineas - 1]
+    ultima_linea = " ".join(lineas[max_lineas - 1 :])
+    while _medir_texto(ultima_linea + "...", escala, grosor)[0] > ancho_maximo and " " in ultima_linea:
+        ultima_linea = ultima_linea.rsplit(" ", 1)[0]
+    lineas_visibles.append(ultima_linea.rstrip() + "...")
+    return lineas_visibles
+
+
 def postura_completa(esqueleto: Mapping[str, Sequence[float]], ejercicio: str) -> bool:
     """Valida que existan los landmarks minimos antes de evaluar y registrar frames."""
     requeridos = LANDMARKS_REQUERIDOS[ejercicio]
@@ -700,27 +714,28 @@ class ModuloPesasDashboard:
         estado_correcto = feedback.es_correcto
         color_estado = COLOR_VERDE if estado_correcto else COLOR_ROJO_UI
         color_estado_oscuro = COLOR_VERDE_OSCURO if estado_correcto else COLOR_ROJO_OSCURO
-        etiqueta_estado = "VERDE / CORRECTO" if estado_correcto else "ROJO / CORREGIR_POSTURA"
+        etiqueta_estado = "VERDE / CORRECTO" if estado_correcto else "ROJO / CORREGIR"
 
         valor_angulo = feedback.angulos.get(ejercicio.angulo_principal)
         self._dibujar_angulo_principal(lienzo, x + 76, y + 199, valor_angulo, color_estado)
 
-        _dibujar_rectangulo_redondeado(lienzo, x + 70, y + 221, 330, 58, 10, color_estado_oscuro, -1)
-        _dibujar_rectangulo_redondeado(lienzo, x + 70, y + 221, 330, 58, 10, color_estado, 1)
+        chip_x, chip_y, chip_w, chip_h = x + 70, y + 221, 330, 58
+        _dibujar_rectangulo_redondeado(lienzo, chip_x, chip_y, chip_w, chip_h, 10, color_estado_oscuro, -1)
+        _dibujar_rectangulo_redondeado(lienzo, chip_x, chip_y, chip_w, chip_h, 10, color_estado, 1)
         if estado_correcto:
             _dibujar_check(lienzo, (x + 104, y + 250), 16, color_estado)
         else:
             _dibujar_x(lienzo, (x + 104, y + 250), 16, color_estado)
-        _dibujar_texto(lienzo, etiqueta_estado, x + 136, y + 260, 0.56, COLOR_TEXTO, 2)
+        _dibujar_texto_centrado(lienzo, etiqueta_estado, chip_x + chip_w // 2 + 14, y + 260, 0.54, COLOR_TEXTO, 2)
 
         mensaje = feedback.mensajes[0] if feedback.mensajes else "Sesion iniciada."
-        lineas = dividir_texto(mensaje, 330, 0.50, 1)
+        lineas = limitar_lineas_texto(mensaje, 332, 0.46, 1, 3)
         if estado_correcto:
             _dibujar_check(lienzo, (x + 52, y + 326), 15, (42, 168, 70))
         else:
             _dibujar_x(lienzo, (x + 52, y + 326), 15, color_estado)
-        for indice, linea in enumerate(lineas[:3]):
-            _dibujar_texto(lienzo, linea, x + 76, y + 316 + indice * 30, 0.50, COLOR_TEXTO, 1)
+        for indice, linea in enumerate(lineas):
+            _dibujar_texto(lienzo, linea, x + 76, y + 316 + indice * 28, 0.46, COLOR_TEXTO, 1)
 
     def _dibujar_base_metricas(self, lienzo: np.ndarray) -> None:
         x, y, w, h = 815, 580, 440, 108
@@ -800,7 +815,7 @@ class ModuloPesasDashboard:
         estado_correcto = feedback.es_correcto
         color_estado = COLOR_VERDE if estado_correcto else COLOR_ROJO_UI
         color_estado_oscuro = COLOR_VERDE_OSCURO if estado_correcto else COLOR_ROJO_OSCURO
-        etiqueta_estado = "VERDE / CORRECTO" if estado_correcto else "ROJO / CORREGIR_POSTURA"
+        etiqueta_estado = "VERDE / CORRECTO" if estado_correcto else "ROJO / CORREGIR"
 
         _dibujar_tarjeta_base(lienzo, x, y, w, h, 18)
         cv2.circle(lienzo, (x + 43, y + 41), 23, COLOR_CYAN_OSCURO, -1, cv2.LINE_AA)
@@ -814,22 +829,23 @@ class ModuloPesasDashboard:
         self._dibujar_angulo_principal(lienzo, x + 76, y + 199, valor_angulo, color_estado)
 
         _dibujar_sombra(lienzo, x + 68, y + 222, 334, 56, 10, color_estado, 0.12, 21)
-        _dibujar_rectangulo_redondeado(lienzo, x + 70, y + 221, 330, 58, 10, color_estado_oscuro, -1)
-        _dibujar_rectangulo_redondeado(lienzo, x + 70, y + 221, 330, 58, 10, color_estado, 1)
+        chip_x, chip_y, chip_w, chip_h = x + 70, y + 221, 330, 58
+        _dibujar_rectangulo_redondeado(lienzo, chip_x, chip_y, chip_w, chip_h, 10, color_estado_oscuro, -1)
+        _dibujar_rectangulo_redondeado(lienzo, chip_x, chip_y, chip_w, chip_h, 10, color_estado, 1)
         if estado_correcto:
             _dibujar_check(lienzo, (x + 104, y + 250), 16, color_estado)
         else:
             _dibujar_x(lienzo, (x + 104, y + 250), 16, color_estado)
-        _dibujar_texto(lienzo, etiqueta_estado, x + 136, y + 260, 0.56, COLOR_TEXTO, 2)
+        _dibujar_texto_centrado(lienzo, etiqueta_estado, chip_x + chip_w // 2 + 14, y + 260, 0.54, COLOR_TEXTO, 2)
 
         mensaje = feedback.mensajes[0] if feedback.mensajes else "Sesion iniciada."
-        lineas = dividir_texto(mensaje, 330, 0.50, 1)
+        lineas = limitar_lineas_texto(mensaje, 332, 0.46, 1, 3)
         if estado_correcto:
             _dibujar_check(lienzo, (x + 52, y + 326), 15, (42, 168, 70))
         else:
             _dibujar_x(lienzo, (x + 52, y + 326), 15, color_estado)
-        for indice, linea in enumerate(lineas[:3]):
-            _dibujar_texto(lienzo, linea, x + 76, y + 316 + indice * 30, 0.50, COLOR_TEXTO, 1)
+        for indice, linea in enumerate(lineas):
+            _dibujar_texto(lienzo, linea, x + 76, y + 316 + indice * 28, 0.46, COLOR_TEXTO, 1)
 
     def _dibujar_angulo_principal(
         self, lienzo: np.ndarray, x: int, y_base: int, valor: float | None, color: tuple[int, int, int]
