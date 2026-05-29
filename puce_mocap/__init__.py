@@ -8,11 +8,20 @@ from puce_mocap.exercise_rules import (
     evaluar_sentadilla,
 )
 from puce_mocap.exercise_session import ExerciseSession
-from puce_mocap.freemocap_adapter import evaluar_ejercicio_freemocap, normalizar_articulaciones_freemocap
+from puce_mocap.freemocap_adapter import (
+    evaluar_ejercicio_freemocap,
+    normalizar_articulaciones_freemocap,
+    normalizar_esqueleto_marcha_freemocap,
+)
+from puce_mocap.gait_analyzer import GaitAnalysisResult, analizar_marcha
+from puce_mocap.gait_session import GaitSession
 
 __all__ = [
     "ExerciseFeedback",
     "ExerciseSession",
+    "GaitAnalysisResult",
+    "GaitSession",
+    "analizar_marcha",
     "calcular_angulo",
     "calcular_angulo_vectores",
     "evaluar_peso_muerto",
@@ -20,4 +29,5 @@ __all__ = [
     "evaluar_sentadilla",
     "evaluar_ejercicio_freemocap",
     "normalizar_articulaciones_freemocap",
+    "normalizar_esqueleto_marcha_freemocap",
 ]

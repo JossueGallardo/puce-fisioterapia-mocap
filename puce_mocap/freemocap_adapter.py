@@ -21,6 +21,7 @@ from puce_mocap.exercise_rules import (
 
 
 _ALIASES_ARTICULACIONES = {
+    "head": ("head", "Head", "nose", "Nose", "NOSE", "face", "Face"),
     "right_shoulder": ("right_shoulder", "rightShoulder", "RShoulder", "r_shoulder", "right shoulder"),
     "left_shoulder": ("left_shoulder", "leftShoulder", "LShoulder", "l_shoulder", "left shoulder"),
     "right_elbow": ("right_elbow", "rightElbow", "RElbow", "r_elbow", "right elbow"),
@@ -35,6 +36,38 @@ _ALIASES_ARTICULACIONES = {
     "left_ankle": ("left_ankle", "leftAnkle", "LAnkle", "l_ankle", "left ankle"),
     "right_foot": ("right_foot", "rightFoot", "right_foot_index", "rightToe", "RFoot", "right foot"),
     "left_foot": ("left_foot", "leftFoot", "left_foot_index", "leftToe", "LFoot", "left foot"),
+}
+
+
+_ALIASES_MARCHA = {
+    "head": ("head", "Head", "nose", "Nose", "NOSE"),
+    "nose": ("nose", "Nose", "NOSE", "head", "Head"),
+    "right_shoulder": ("right_shoulder", "rightShoulder", "RShoulder", "r_shoulder", "right shoulder"),
+    "left_shoulder": ("left_shoulder", "leftShoulder", "LShoulder", "l_shoulder", "left shoulder"),
+    "right_hip": ("right_hip", "rightHip", "RHip", "r_hip", "right hip"),
+    "left_hip": ("left_hip", "leftHip", "LHip", "l_hip", "left hip"),
+    "right_knee": ("right_knee", "rightKnee", "RKnee", "r_knee", "right knee"),
+    "left_knee": ("left_knee", "leftKnee", "LKnee", "l_knee", "left knee"),
+    "right_ankle": ("right_ankle", "rightAnkle", "RAnkle", "r_ankle", "right ankle"),
+    "left_ankle": ("left_ankle", "leftAnkle", "LAnkle", "l_ankle", "left ankle"),
+    "right_foot_index": (
+        "right_foot_index",
+        "rightFootIndex",
+        "right_foot",
+        "rightFoot",
+        "rightToe",
+        "RFoot",
+        "right foot",
+    ),
+    "left_foot_index": (
+        "left_foot_index",
+        "leftFootIndex",
+        "left_foot",
+        "leftFoot",
+        "leftToe",
+        "LFoot",
+        "left foot",
+    ),
 }
 
 
@@ -70,6 +103,27 @@ def normalizar_articulaciones_freemocap(articulaciones_3d: Mapping[str, Sequence
     return normalizado
 
 
+def normalizar_esqueleto_marcha_freemocap(articulaciones_3d: Mapping[str, Sequence[float]]) -> dict[str, list[float]]:
+    """Normaliza articulaciones 3D para el analizador de marcha.
+
+    Esta funcion no lee archivos ni asume rutas internas de FreeMoCap. Recibe un
+    diccionario ya cargado desde una exportacion o conversion intermedia y deja
+    los nombres listos para `puce_mocap.gait_analyzer.analizar_marcha`.
+    """
+    indice_entrada = {_normalizar_clave(nombre): (nombre, valor) for nombre, valor in articulaciones_3d.items()}
+    normalizado: dict[str, list[float]] = {}
+
+    for nombre_puce, alias in _ALIASES_MARCHA.items():
+        for candidato in alias:
+            clave = _normalizar_clave(candidato)
+            if clave in indice_entrada:
+                nombre_original, valor = indice_entrada[clave]
+                normalizado[nombre_puce] = _convertir_punto_3d(valor, nombre_original)
+                break
+
+    return normalizado
+
+
 def evaluar_ejercicio_freemocap(
     articulaciones_3d: Mapping[str, Sequence[float]],
     ejercicio: str,
@@ -92,4 +146,3 @@ def evaluar_ejercicio_freemocap(
         return evaluar_peso_muerto(esqueleto)
 
     raise ValueError("Ejercicio no soportado. Usa sentadilla, press_hombro o peso_muerto.")
-

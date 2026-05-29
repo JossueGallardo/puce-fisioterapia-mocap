@@ -88,7 +88,13 @@ Ejercicios previstos:
 
 ### Modulo 3: Analisis de marcha en caminadora
 
-Analisis de marcha con 2 o 3 camaras, calibracion ChArUco, metricas de simetria y longitud de paso. Se implementara desde la Semana 4.
+Analisis de marcha con 2 o 3 camaras, calibracion ChArUco, metricas de simetria y longitud de paso. La Semana 4 ya incluye un primer modulo funcional con camara en vivo usando MediaPipe Pose como complemento, semaforo de alertas y reporte CSV.
+
+Comando principal del producto de Semana 4:
+
+```powershell
+python -m puce_mocap.modulo_caminadora_app
+```
 
 Metricas previstas:
 
@@ -205,6 +211,18 @@ Ejecutar el demo del adaptador FreeMoCap:
 python examples\semana_3_freemocap_adapter_demo.py
 ```
 
+Ejecutar el demo de consola de marcha en caminadora:
+
+```powershell
+python examples\semana_4_gait_analyzer_demo.py
+```
+
+Ejecutar la interfaz final de caminadora:
+
+```powershell
+python -m puce_mocap.modulo_caminadora_app
+```
+
 ## Estado Actual del Proyecto
 
 Implementado:
@@ -222,6 +240,7 @@ Implementado:
 - Interfaz final de Semana 3 / Modulo 1 con dashboard oscuro, camara en vivo, logos, paneles de estado, ejercicios, metricas y reporte CSV.
 - Wrapper de compatibilidad para el demo real en vivo de Semana 3.
 - Adaptador inicial para conectar diccionarios 3D de FreeMoCap con las reglas del modulo de pesas.
+- Base de Semana 4 / Modulo 3 para analisis de marcha en caminadora: metricas, semaforo, sesion, reporte CSV e interfaz live.
 - Carpeta `sesiones/` preparada para pruebas locales no versionadas.
 
 Pendiente manual:
@@ -248,6 +267,7 @@ Pendiente manual:
 - [Semana 1 - Prueba con una camara](docs/semana_1_prueba_una_camara.md)
 - [Semana 2 - Multicamara y calibracion ChArUco](docs/semana_2_multicamara_charuco.md)
 - [Semana 3 - Modulo de ejercicios con pesas](docs/semana_3_modulo_pesas.md)
+- [Semana 4 - Modulo de caminadora](docs/semana_4_modulo_caminadora.md)
 - [Assets institucionales](assets/README.md)
 
 ## Estructura PUCE Agregada
@@ -260,13 +280,16 @@ puce-fisioterapia-mocap/
 ├── docs/
 │   ├── semana_1_prueba_una_camara.md
 │   ├── semana_2_multicamara_charuco.md
-│   └── semana_3_modulo_pesas.md
+│   ├── semana_3_modulo_pesas.md
+│   └── semana_4_modulo_caminadora.md
 ├── examples/
 │   ├── semana_2_angle_utils_demo.py
 │   ├── semana_3_freemocap_adapter_demo.py
 │   ├── semana_3_live_pose_exercise_demo.py
 │   ├── semana_3_modulo_pesas_demo.py
-│   └── semana_3_overlay_demo.py
+│   ├── semana_3_overlay_demo.py
+│   ├── semana_4_gait_analyzer_demo.py
+│   └── semana_4_modulo_caminadora_demo.py
 ├── puce_mocap/
 │   ├── __init__.py
 │   ├── angle_utils.py
@@ -274,6 +297,10 @@ puce-fisioterapia-mocap/
 │   ├── exercise_rules.py
 │   ├── exercise_session.py
 │   ├── freemocap_adapter.py
+│   ├── gait_analyzer.py
+│   ├── gait_report.py
+│   ├── gait_session.py
+│   ├── modulo_caminadora_app.py
 │   └── modulo_pesas_app.py
 ├── reports/
 │   └── .gitkeep
@@ -283,7 +310,9 @@ puce-fisioterapia-mocap/
     ├── test_angle_utils.py
     ├── test_exercise_rules.py
     ├── test_exercise_session.py
-    └── test_freemocap_adapter.py
+    ├── test_freemocap_adapter.py
+    ├── test_gait_analyzer.py
+    └── test_gait_session.py
 ```
 
 ## Uso del Modulo de Angulos
