@@ -297,13 +297,12 @@ Pendiente manual:
 | Semana 7 | Documentación final y demo | Repositorio final y casa abierta | No implementada todavía |
 
 ## Documentacion del Proyecto
-
+- [Menu principal integrado](docs/menu_principal.md)
 - [Semana 1 - Prueba con una camara](docs/semana_1_prueba_una_camara.md)
 - [Semana 2 - Multicamara y calibracion ChArUco](docs/semana_2_multicamara_charuco.md)
 - [Semana 3 - Modulo de ejercicios con pesas](docs/semana_3_modulo_pesas.md)
 - [Semana 4 - Modulo de caminadora](docs/semana_4_modulo_caminadora.md)
 - [Semana 5 - Modulo de rehabilitacion](docs/semana_5_modulo_rehabilitacion.md)
-- [Menu principal integrado](docs/menu_principal.md)
 - [Semana 6 - Pruebas integrales](docs/semana_6_pruebas_integrales.md)
 - [Assets institucionales](assets/README.md)
 
