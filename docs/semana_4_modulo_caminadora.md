@@ -106,6 +106,8 @@ Comando final:
 python -m puce_mocap.modulo_caminadora_app
 ```
 
+El módulo también puede abrirse desde `python -m puce_mocap.main_menu`. Al cerrarlo con `q` o cerrar su ventana, se regresa al menú gráfico.
+
 ## Metricas implementadas
 
 - `inclinacion_tronco`

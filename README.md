@@ -26,12 +26,12 @@ Este fork mantiene la licencia AGPLv3 y conserva la trazabilidad hacia el proyec
 - Carrera: Ingeniería en Sistemas de Información
 - Tutor: RODRIGUEZ CLAVIJO FRANCISCO
 
-Los logos institucionales reales deben agregarse manualmente en `assets/`:
+Los logos institucionales usados por las interfaces están disponibles en `assets/`:
 
 - `assets/logo_puce.png`
 - `assets/logo_fe_alegria.png`
 
-No se incluyen logos descargados de internet en este repositorio.
+Las interfaces de Pesas, Rehabilitación, Caminadora y el menú principal cargan estos archivos sin modificar el núcleo de FreeMoCap.
 
 ## Descripción del Sistema
 
@@ -53,7 +53,7 @@ Adaptar un sistema de captura de movimiento basado en FreeMoCap para analizar mo
 - Preparar documentación de instalación y prueba inicial con una cámara.
 - Documentar la configuración multicámara y la calibración con tablero ChArUco.
 - Mantener separada la personalizacion PUCE del nucleo original de FreeMoCap.
-- Preparar el proyecto para modulos posteriores de pesas, rehabilitacion y marcha.
+- Integrar los modulos de pesas, rehabilitacion y marcha desde un menu principal.
 
 ## Modulos del Proyecto
 
@@ -67,7 +67,7 @@ Comando principal del producto final de Semana 3:
 python -m puce_mocap.modulo_pesas_app
 ```
 
-Ejercicios previstos:
+Ejercicios implementados:
 
 - Sentadilla.
 - Press de hombro.
@@ -75,9 +75,15 @@ Ejercicios previstos:
 
 ### Modulo 2: Rehabilitacion fisioterapeutica
 
-Ejercicios terapeuticos con rangos configurables por paciente mediante perfiles JSON y reportes simples. Se implementara desde la Semana 5.
+Ejercicios terapeuticos con rangos configurables mediante perfiles JSON ficticios, sesion acumulada y reporte CSV. La Semana 5 incluye una interfaz en vivo coherente con los modulos de pesas y caminadora.
 
-Ejercicios previstos:
+Comando principal del producto de Semana 5:
+
+```powershell
+python -m puce_mocap.modulo_rehabilitacion_app
+```
+
+Ejercicios implementados:
 
 - Flexion de codo.
 - Abduccion de hombro.
@@ -96,7 +102,7 @@ Comando principal del producto de Semana 4:
 python -m puce_mocap.modulo_caminadora_app
 ```
 
-Metricas previstas:
+Metricas implementadas:
 
 - Inclinacion del tronco.
 - Angulo de rodilla derecha.
@@ -115,7 +121,7 @@ Metricas previstas:
 - PySide6
 - Git y GitHub
 - pytest
-- JSON y CSV para etapas posteriores
+- JSON y CSV para perfiles ficticios y reportes
 
 ## Instalacion Base de FreeMoCap
 
@@ -175,6 +181,14 @@ Ejecutar pruebas del modulo PUCE:
 python -m pytest
 ```
 
+Ejecutar el sistema integrado desde el menú principal gráfico:
+
+```powershell
+python -m puce_mocap.main_menu
+```
+
+La ventana permite seleccionar con el mouse el módulo de pesas, rehabilitación, caminadora, FreeMoCap original o la verificación del entorno. El menú se oculta mientras el módulo está abierto y reaparece automáticamente al cerrarlo con `q` o cerrar su ventana.
+
 Ejecutar el ejemplo de calculo de angulos:
 
 ```powershell
@@ -223,6 +237,24 @@ Ejecutar la interfaz final de caminadora:
 python -m puce_mocap.modulo_caminadora_app
 ```
 
+Ejecutar la demo de rehabilitacion sin camara:
+
+```powershell
+python examples\semana_5_rehab_demo.py
+```
+
+Ejecutar la interfaz final de rehabilitacion:
+
+```powershell
+python -m puce_mocap.modulo_rehabilitacion_app
+```
+
+Ejecutar las verificaciones integrales sin camara:
+
+```powershell
+python examples\semana_6_smoke_check.py
+```
+
 ## Estado Actual del Proyecto
 
 Implementado:
@@ -241,26 +273,28 @@ Implementado:
 - Wrapper de compatibilidad para el demo real en vivo de Semana 3.
 - Adaptador inicial para conectar diccionarios 3D de FreeMoCap con las reglas del modulo de pesas.
 - Base de Semana 4 / Modulo 3 para analisis de marcha en caminadora: metricas, semaforo, sesion, reporte CSV e interfaz live.
+- Semana 5 / Modulo 2 con perfiles JSON ficticios, seis ejercicios terapeuticos, rangos configurables, sesion, dashboard y reporte CSV.
+- Menú principal gráfico integrado, coherente con los dashboards, para abrir los tres módulos PUCE y FreeMoCap original.
+- Semana 6 preparada con smoke check, pruebas de importación, menú gráfico y protocolo de cinco sesiones ficticias.
 - Carpeta `sesiones/` preparada para pruebas locales no versionadas.
 
 Pendiente manual:
 
-- Verificar manualmente que los logos reales de `assets/` carguen correctamente en la interfaz final.
-- Instalar dependencias completas de FreeMoCap en el entorno local.
-- Probar fisicamente FreeMoCap con una camara.
+- Probar manualmente las tres interfaces con camara en el entorno fisico.
 - Probar configuracion multicamara con tablero ChArUco.
+- Ejecutar y documentar las cinco sesiones ficticias del protocolo de Semana 6.
 
-## Cronograma Resumido de 7 Semanas
+## Estado por Semana
 
-| Semana | Actividad principal | Entregable |
-|---|---|---|
-| Semana 1 | Personalizacion inicial, instalacion y prueba con una camara | Repositorio institucional y FreeMoCap probado con una camara |
-| Semana 2 | Funcion de angulos, base de esqueleto 3D, multicamara y ChArUco | Angulos validados y guia multicamara |
-| Semana 3 | Ejercicios con pesas | Modulo de pesas con indicador correcto/incorrecto |
-| Semana 4 | Marcha en caminadora | Metricas de marcha y alertas basicas |
-| Semana 5 | Rehabilitacion con perfiles JSON | Rangos terapeuticos configurables y reporte simple |
-| Semana 6 | Pruebas integrales | Validacion bajo supervision y ajustes |
-| Semana 7 | Documentacion final y demo | Repositorio final y demo lista |
+| Semana | Actividad principal | Entregable | Estado actual |
+|---|---|---|---|
+| Semana 1 | Personalización inicial, instalación y prueba con una cámara | Repositorio institucional y FreeMoCap probado con una cámara | Implementada; conservar evidencia física |
+| Semana 2 | Ángulos 2D/3D, multicámara y ChArUco | Ángulos validados y guía multicámara | Implementada; calibración física pendiente |
+| Semana 3 | Ejercicios con pesas | Dashboard con cámara, reglas, métricas y CSV | Implementada |
+| Semana 4 | Marcha en caminadora | Métricas de marcha, alertas y CSV | Implementada con una cámara; multicámara pendiente |
+| Semana 5 | Rehabilitación con perfiles JSON | Seis ejercicios, rangos, historial y CSV | Implementada |
+| Semana 6 | Pruebas integrales | Smoke check, menú gráfico y protocolo de cinco sesiones | Preparada; sesiones físicas pendientes |
+| Semana 7 | Documentación final y demo | Repositorio final y casa abierta | No implementada todavía |
 
 ## Documentacion del Proyecto
 
@@ -268,6 +302,9 @@ Pendiente manual:
 - [Semana 2 - Multicamara y calibracion ChArUco](docs/semana_2_multicamara_charuco.md)
 - [Semana 3 - Modulo de ejercicios con pesas](docs/semana_3_modulo_pesas.md)
 - [Semana 4 - Modulo de caminadora](docs/semana_4_modulo_caminadora.md)
+- [Semana 5 - Modulo de rehabilitacion](docs/semana_5_modulo_rehabilitacion.md)
+- [Menu principal integrado](docs/menu_principal.md)
+- [Semana 6 - Pruebas integrales](docs/semana_6_pruebas_integrales.md)
 - [Assets institucionales](assets/README.md)
 
 ## Estructura PUCE Agregada
@@ -275,13 +312,17 @@ Pendiente manual:
 ```text
 puce-fisioterapia-mocap/
 ├── assets/
-│   ├── .gitkeep
+│   ├── logo_puce.png
+│   ├── logo_fe_alegria.png
 │   └── README.md
 ├── docs/
 │   ├── semana_1_prueba_una_camara.md
 │   ├── semana_2_multicamara_charuco.md
 │   ├── semana_3_modulo_pesas.md
-│   └── semana_4_modulo_caminadora.md
+│   ├── semana_4_modulo_caminadora.md
+│   ├── semana_5_modulo_rehabilitacion.md
+│   ├── semana_6_pruebas_integrales.md
+│   └── menu_principal.md
 ├── examples/
 │   ├── semana_2_angle_utils_demo.py
 │   ├── semana_3_freemocap_adapter_demo.py
@@ -289,7 +330,13 @@ puce-fisioterapia-mocap/
 │   ├── semana_3_modulo_pesas_demo.py
 │   ├── semana_3_overlay_demo.py
 │   ├── semana_4_gait_analyzer_demo.py
-│   └── semana_4_modulo_caminadora_demo.py
+│   ├── semana_4_modulo_caminadora_demo.py
+│   ├── semana_5_rehab_demo.py
+│   ├── semana_6_smoke_check.py
+│   └── menu_principal_demo.py
+├── profiles/
+│   ├── paciente_demo.json
+│   └── README.md
 ├── puce_mocap/
 │   ├── __init__.py
 │   ├── angle_utils.py
@@ -300,8 +347,14 @@ puce-fisioterapia-mocap/
 │   ├── gait_analyzer.py
 │   ├── gait_report.py
 │   ├── gait_session.py
+│   ├── main_menu.py
 │   ├── modulo_caminadora_app.py
-│   └── modulo_pesas_app.py
+│   ├── modulo_pesas_app.py
+│   ├── modulo_rehabilitacion_app.py
+│   ├── rehab_analyzer.py
+│   ├── rehab_profiles.py
+│   ├── rehab_report.py
+│   └── rehab_session.py
 ├── reports/
 │   └── .gitkeep
 ├── sesiones/
@@ -312,7 +365,12 @@ puce-fisioterapia-mocap/
     ├── test_exercise_session.py
     ├── test_freemocap_adapter.py
     ├── test_gait_analyzer.py
-    └── test_gait_session.py
+    ├── test_gait_session.py
+    ├── test_main_menu.py
+    ├── test_rehab_analyzer.py
+    ├── test_rehab_profiles.py
+    ├── test_rehab_session.py
+    └── test_smoke_imports.py
 ```
 
 ## Uso del Modulo de Angulos

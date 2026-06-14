@@ -111,6 +111,14 @@ Comando final:
 python -m puce_mocap.modulo_pesas_app
 ```
 
+También puede abrirse con el mouse desde el menú gráfico integrado:
+
+```powershell
+python -m puce_mocap.main_menu
+```
+
+Al salir del módulo con `q` o cerrar su ventana, el menú principal vuelve a mostrarse automáticamente.
+
 Esta es la interfaz final de Semana 3 / Modulo 1. Abre la camara 0, detecta el cuerpo con MediaPipe Pose, dibuja el esqueleto sobre la camara, evalua el ejercicio seleccionado y genera `reports/semana_3_live_pose_report.csv` al salir. La pantalla se reorganizo como dashboard profesional en modo oscuro con header institucional, logos PUCE y Fe y Alegria, panel grande de camara, panel central de estado, panel derecho de ejercicios, tarjetas de metricas, leyenda y sesion en curso.
 
 El archivo antiguo queda solo como wrapper de compatibilidad:

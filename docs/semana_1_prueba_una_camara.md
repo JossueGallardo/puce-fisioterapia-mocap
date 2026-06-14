@@ -124,6 +124,10 @@ python -m pytest
 - Captura o nota de una grabacion corta realizada con una camara.
 - Registro de cualquier problema encontrado y como se resolvio.
 
+## Estado final de Semana 1
+
+La personalización institucional, los créditos, los assets y la guía de instalación están implementados. Los logos `assets/logo_puce.png` y `assets/logo_fe_alegria.png` son utilizados por las interfaces gráficas del proyecto. La evidencia física de FreeMoCap con una cámara debe conservarse como parte de la entrega, sin subir videos de pacientes.
+
 ## Advertencia de uso
 
 Esta prueba no genera diagnostico medico. Solo valida la instalacion, la captura basica y la preparacion inicial del repositorio para el proyecto comunitario.

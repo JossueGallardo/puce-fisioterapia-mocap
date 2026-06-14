@@ -115,4 +115,4 @@ Hacer este cambio solo dentro del `venv` del proyecto y volver a probar FreeMoCa
 
 ## Limite de alcance
 
-Esta documentacion prepara la configuracion multicamara de Semana 2. El analisis automatico de marcha corresponde a la Semana 4 y no se implementa todavia.
+Semana 2 deja implementado y probado el cálculo de ángulos 2D/3D, además de la guía multicámara y ChArUco. El análisis automático de marcha ya fue implementado posteriormente en Semana 4; la calibración física con 2 o 3 cámaras continúa siendo una validación manual del entorno real.

@@ -171,5 +171,8 @@ reports/*.pdf
 reportes/
 perfiles_reales/
 datos_pacientes/
+profiles/*.json
+!profiles/paciente_demo.json
+profiles/reales/
 *.mov
 *.mkv
