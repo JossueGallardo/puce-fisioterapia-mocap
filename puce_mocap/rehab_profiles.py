@@ -1,4 +1,4 @@
-"""Perfiles JSON ficticios para el Modulo 2 de rehabilitacion."""
+"""Perfiles JSON versionados para ejercicios de rehabilitación."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ from copy import deepcopy
 import json
 from pathlib import Path
 from typing import Any, Mapping
+
+from puce_mocap.movement import AngleRange, MovementDefinition
 
 
 EJERCICIOS_REHABILITACION = (
@@ -18,22 +20,48 @@ EJERCICIOS_REHABILITACION = (
 )
 
 CAMPOS_OBLIGATORIOS = ("nombre", "codigo_paciente", "lesion", "observaciones", "ejercicios")
-CAMPOS_EJERCICIO = ("angulo_minimo", "angulo_maximo", "repeticiones_objetivo")
 CAMPOS_SENSIBLES = {"cedula", "telefono", "direccion", "correo", "email"}
+RANGOS_INICIO_PREDETERMINADOS = {
+    "flexion_codo": (160.0, 180.0),
+    "abduccion_hombro": (0.0, 20.0),
+    "rotacion_muneca": (-10.0, 10.0),
+    "extension_rodilla": (80.0, 120.0),
+    "dorsiflexion_tobillo": (0.0, 5.0),
+    "elevacion_pierna_recta": (0.0, 10.0),
+}
+
+
+def _config(
+    inicio: tuple[float, float],
+    objetivo: tuple[float, float],
+    repeticiones: int,
+    *,
+    lado: str = "right",
+) -> dict[str, Any]:
+    return {
+        "rango_inicio": {"minimo": inicio[0], "maximo": inicio[1]},
+        "rango_objetivo": {"minimo": objetivo[0], "maximo": objetivo[1]},
+        "repeticiones_objetivo": repeticiones,
+        "lado": lado,
+        "histeresis_grados": 3.0,
+        "permanencia_ms": 200,
+        "ciclo_minimo_ms": 600,
+    }
 
 
 PERFIL_DEMO = {
+    "schema_version": 2,
     "nombre": "Paciente de prueba",
     "codigo_paciente": "PAC-001",
-    "lesion": "Caso ficticio de rehabilitacion",
+    "lesion": "Caso ficticio de rehabilitación",
     "observaciones": "Perfil demo sin datos reales",
     "ejercicios": {
-        "flexion_codo": {"angulo_minimo": 30, "angulo_maximo": 130, "repeticiones_objetivo": 10},
-        "abduccion_hombro": {"angulo_minimo": 45, "angulo_maximo": 100, "repeticiones_objetivo": 8},
-        "rotacion_muneca": {"angulo_minimo": 70, "angulo_maximo": 170, "repeticiones_objetivo": 8},
-        "extension_rodilla": {"angulo_minimo": 160, "angulo_maximo": 180, "repeticiones_objetivo": 10},
-        "dorsiflexion_tobillo": {"angulo_minimo": 0, "angulo_maximo": 25, "repeticiones_objetivo": 10},
-        "elevacion_pierna_recta": {"angulo_minimo": 30, "angulo_maximo": 60, "repeticiones_objetivo": 8},
+        "flexion_codo": _config((160, 180), (30, 130), 10),
+        "abduccion_hombro": _config((0, 20), (45, 100), 8),
+        "rotacion_muneca": _config((-10, 10), (45, 90), 8),
+        "extension_rodilla": _config((80, 120), (160, 180), 10),
+        "dorsiflexion_tobillo": _config((0, 5), (10, 25), 10),
+        "elevacion_pierna_recta": _config((0, 10), (30, 60), 8),
     },
 }
 
@@ -42,78 +70,110 @@ def _es_numero(valor: Any) -> bool:
     return isinstance(valor, (int, float)) and not isinstance(valor, bool)
 
 
-def validar_perfil_paciente(perfil: Mapping[str, Any]) -> bool:
-    """Valida la estructura minima de un perfil ficticio."""
+def _normalizar_lado(lado: str) -> str:
+    if lado in {"right", "derecho", "derecha"}:
+        return "right"
+    if lado in {"left", "izquierdo", "izquierda"}:
+        return "left"
+    raise ValueError("El lado configurado debe ser derecho/right o izquierdo/left.")
+
+
+def _leer_rango(valor: Any, nombre: str) -> AngleRange:
+    if not isinstance(valor, Mapping):
+        raise ValueError(f"{nombre} debe ser un objeto con mínimo y máximo.")
+    minimo = valor.get("minimo")
+    maximo = valor.get("maximo")
+    if not _es_numero(minimo) or not _es_numero(maximo):
+        raise ValueError(f"Los límites de {nombre} deben ser numéricos.")
+    return AngleRange(float(minimo), float(maximo))
+
+
+def movimiento_desde_config(configuracion: Mapping[str, Any]) -> MovementDefinition:
+    return MovementDefinition(
+        start_range=_leer_rango(configuracion["rango_inicio"], "rango_inicio"),
+        target_range=_leer_rango(configuracion["rango_objetivo"], "rango_objetivo"),
+        hysteresis_deg=float(configuracion.get("histeresis_grados", 3.0)),
+        dwell_seconds=float(configuracion.get("permanencia_ms", 200)) / 1000.0,
+        min_cycle_seconds=float(configuracion.get("ciclo_minimo_ms", 600)) / 1000.0,
+    )
+
+
+def normalizar_perfil_paciente(perfil: Mapping[str, Any]) -> dict[str, Any]:  # noqa: C901
+    """Valida un perfil v1/v2 y devuelve una copia normalizada al esquema v2."""
     if not isinstance(perfil, Mapping):
         raise ValueError("El perfil debe ser un objeto JSON.")
-
     for campo in CAMPOS_OBLIGATORIOS:
         if campo not in perfil:
             raise ValueError(f"Falta el campo obligatorio: {campo}.")
 
-    sensibles_presentes = CAMPOS_SENSIBLES.intersection(str(clave).lower() for clave in perfil)
-    if sensibles_presentes:
-        campos = ", ".join(sorted(sensibles_presentes))
-        raise ValueError(f"El perfil no debe incluir datos sensibles: {campos}.")
-
+    sensibles = CAMPOS_SENSIBLES.intersection(str(clave).lower() for clave in perfil)
+    if sensibles:
+        raise ValueError(f"El perfil no debe incluir datos sensibles: {', '.join(sorted(sensibles))}.")
     for campo in ("nombre", "codigo_paciente", "lesion", "observaciones"):
         if not isinstance(perfil[campo], str) or not perfil[campo].strip():
             raise ValueError(f"El campo {campo} debe ser texto no vacio.")
 
     ejercicios = perfil["ejercicios"]
     if not isinstance(ejercicios, Mapping) or not ejercicios:
-        raise ValueError("El campo ejercicios debe contener al menos un ejercicio configurado.")
+        raise ValueError("El campo ejercicios debe contener al menos un ejercicio.")
 
-    for nombre, configuracion in ejercicios.items():
+    normalizado = {campo: deepcopy(perfil[campo]) for campo in CAMPOS_OBLIGATORIOS if campo != "ejercicios"}
+    normalizado["schema_version"] = 2
+    normalizado["ejercicios"] = {}
+    for nombre, configuracion_original in ejercicios.items():
         if nombre not in EJERCICIOS_REHABILITACION:
             raise ValueError(f"Ejercicio no soportado en el perfil: {nombre}.")
-        if not isinstance(configuracion, Mapping):
-            raise ValueError(f"La configuracion de {nombre} debe ser un objeto JSON.")
-        for campo in CAMPOS_EJERCICIO:
-            if campo not in configuracion:
-                raise ValueError(f"Falta {campo} en el ejercicio {nombre}.")
+        if not isinstance(configuracion_original, Mapping):
+            raise ValueError(f"La configuración de {nombre} debe ser un objeto JSON.")
+        configuracion = dict(configuracion_original)
+        if "rango_objetivo" not in configuracion:
+            minimo = configuracion.get("angulo_minimo")
+            maximo = configuracion.get("angulo_maximo")
+            if not _es_numero(minimo) or not _es_numero(maximo):
+                raise ValueError(f"El perfil legado de {nombre} requiere angulo_minimo y angulo_maximo.")
+            configuracion["rango_objetivo"] = {"minimo": float(minimo), "maximo": float(maximo)}
+        configuracion.pop("angulo_minimo", None)
+        configuracion.pop("angulo_maximo", None)
+        if "rango_inicio" not in configuracion:
+            minimo, maximo = RANGOS_INICIO_PREDETERMINADOS[nombre]
+            configuracion["rango_inicio"] = {"minimo": minimo, "maximo": maximo}
 
-        minimo = configuracion["angulo_minimo"]
-        maximo = configuracion["angulo_maximo"]
-        repeticiones = configuracion["repeticiones_objetivo"]
-        if not _es_numero(minimo) or not _es_numero(maximo):
-            raise ValueError(f"Los angulos de {nombre} deben ser numericos.")
-        if float(minimo) > float(maximo):
-            raise ValueError(f"angulo_minimo no puede superar angulo_maximo en {nombre}.")
+        repeticiones = configuracion.get("repeticiones_objetivo")
         if not isinstance(repeticiones, int) or isinstance(repeticiones, bool) or repeticiones <= 0:
             raise ValueError(f"repeticiones_objetivo de {nombre} debe ser un entero positivo.")
+        configuracion["lado"] = _normalizar_lado(str(configuracion.get("lado", "right")))
+        configuracion.setdefault("histeresis_grados", 3.0)
+        configuracion.setdefault("permanencia_ms", 200)
+        configuracion.setdefault("ciclo_minimo_ms", 600)
+        movimiento_desde_config(configuracion)
+        normalizado["ejercicios"][nombre] = configuracion
+    return normalizado
 
-        lado = configuracion.get("lado", "right")
-        if lado not in {"right", "left", "derecho", "izquierdo"}:
-            raise ValueError(f"El lado configurado para {nombre} no es valido.")
 
+def validar_perfil_paciente(perfil: Mapping[str, Any]) -> bool:
+    normalizar_perfil_paciente(perfil)
     return True
 
 
 def crear_perfil_demo() -> dict[str, Any]:
-    """Retorna una copia independiente del perfil ficticio incluido."""
     return deepcopy(PERFIL_DEMO)
 
 
 def cargar_perfil_paciente(ruta_json: str | Path) -> dict[str, Any]:
-    """Carga y valida un perfil de paciente ficticio desde JSON."""
     ruta = Path(ruta_json)
     try:
         with ruta.open(encoding="utf-8") as archivo:
             perfil = json.load(archivo)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"El archivo JSON no es valido: {exc.msg}.") from exc
-
-    validar_perfil_paciente(perfil)
-    return perfil
+        raise ValueError(f"El archivo JSON no es válido: {exc.msg}.") from exc
+    return normalizar_perfil_paciente(perfil)
 
 
 def guardar_perfil_paciente(perfil: Mapping[str, Any], ruta_json: str | Path) -> Path:
-    """Valida y guarda un perfil ficticio en formato JSON legible."""
-    validar_perfil_paciente(perfil)
+    normalizado = normalizar_perfil_paciente(perfil)
     ruta = Path(ruta_json)
     ruta.parent.mkdir(parents=True, exist_ok=True)
     with ruta.open("w", encoding="utf-8") as archivo:
-        json.dump(dict(perfil), archivo, ensure_ascii=False, indent=2)
+        json.dump(normalizado, archivo, ensure_ascii=False, indent=2)
         archivo.write("\n")
     return ruta

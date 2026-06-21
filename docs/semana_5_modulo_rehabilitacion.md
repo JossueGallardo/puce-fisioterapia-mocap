@@ -1,5 +1,7 @@
 # Semana 5 - Módulo de rehabilitación fisioterapéutica
 
+> Actualización 2026: los perfiles vigentes usan `schema_version: 2`, rangos separados de inicio/objetivo y ciclos completos. La interfaz permite editar paciente, rangos, lado y repeticiones antes de iniciar. La rotación de muñeca es relativa a una calibración neutral.
+
 ## Objetivo
 
 Implementar el Módulo 2 de la guía PUCE - Fe y Alegría con perfiles JSON ficticios, seis ejercicios terapéuticos, rangos configurables y reporte CSV por sesión.
@@ -54,7 +56,7 @@ Todos los cálculos reutilizan `puce_mocap.angle_utils.calcular_angulo` o `calcu
 - Amarillo: `FUERA_DEL_RANGO`.
 - Rojo: `POSTURA_INCOMPLETA`.
 
-Una postura incompleta muestra `No se detecta postura completa.` y no se cuenta como frame válido.
+Una postura incompleta muestra `No se detecta postura completa.` y no se cuenta como fotograma válido.
 
 ## Interfaz en vivo
 
@@ -64,17 +66,13 @@ Comando final:
 python -m puce_mocap.modulo_rehabilitacion_app
 ```
 
-Controles:
+Controles principales:
 
-- `1`: flexión de codo.
-- `2`: abducción de hombro.
-- `3`: rotación de muñeca.
-- `4`: extensión de rodilla.
-- `5`: dorsiflexión de tobillo.
-- `6`: elevación de pierna recta.
-- `r`: reiniciar la sesión actual.
-- `g`: guardar `reports/semana_5_rehab_report.csv`.
-- `q`: salir; si se abrió desde el menú principal, se vuelve al menú.
+- `Iniciar cámara` abre únicamente la cámara detectada que seleccione el usuario.
+- `Iniciar ejercicio` habilita el registro y el conteo.
+- Los formularios permiten editar datos del paciente, rangos de inicio/objetivo, lado y repeticiones.
+- `Calibrar muñeca` aparece para la rotación de muñeca.
+- `Cargar perfil` y `Guardar perfil` administran archivos JSON fuera del repositorio.
 
 La pantalla muestra identidad PUCE + Fe y Alegría, cámara con esqueleto, perfil ficticio, ejercicio actual, ángulo, rango objetivo, estado, repeticiones, porcentaje dentro del rango, ángulo máximo y frames válidos.
 

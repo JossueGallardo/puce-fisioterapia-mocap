@@ -1,10 +1,12 @@
-"""Reporte CSV del Modulo 2 de rehabilitacion."""
+"""Reporte CSV del Módulo 2 de rehabilitación."""
 
 from __future__ import annotations
 
 import csv
 from pathlib import Path
 from typing import Any, Mapping
+
+from puce_mocap.app_paths import reports_dir
 
 
 REPORT_FIELDS = [
@@ -22,15 +24,15 @@ REPORT_FIELDS = [
     "observacion",
 ]
 
-DEFAULT_REPORT_PATH = Path("reports") / "semana_5_rehab_report.csv"
+DEFAULT_REPORT_PATH = reports_dir() / "semana_5_rehab_report.csv"
 
 
-def generar_reporte_rehabilitacion_csv(
+def generar_reporte_rehabilitacion_csv(  # noqa: C901
     resumen: Mapping[str, Any],
     perfil: Mapping[str, Any],
     ruta_salida: str | Path | None = None,
 ) -> Path:
-    """Agrega una sesion al CSV y compara el angulo maximo cuando es posible."""
+    """Agrega una sesión al CSV y compara el ángulo máximo cuando es posible."""
     ruta = Path(ruta_salida) if ruta_salida is not None else DEFAULT_REPORT_PATH
     ruta.parent.mkdir(parents=True, exist_ok=True)
 
@@ -53,20 +55,21 @@ def generar_reporte_rehabilitacion_csv(
 
     ejercicio = str(resumen.get("ejercicio", ""))
     configuracion = perfil.get("ejercicios", {}).get(ejercicio, {})
+    rango_objetivo = configuracion.get("rango_objetivo", {})
     angulo_actual = resumen.get("angulo_maximo_alcanzado")
-    comparacion = "Sin sesion anterior comparable."
+    comparacion = "Sin sesión anterior comparable."
     if fila_anterior and fila_anterior.get("ejercicio") == ejercicio:
         try:
             angulo_anterior = float(fila_anterior["angulo_maximo_alcanzado"])
             diferencia = float(angulo_actual) - angulo_anterior
             if diferencia > 0:
-                comparacion = f"Aumento de {diferencia:.2f} grados respecto a la sesion anterior."
+                comparacion = f"Aumento de {diferencia:.2f} grados respecto a la sesión anterior."
             elif diferencia < 0:
-                comparacion = f"Disminucion de {abs(diferencia):.2f} grados respecto a la sesion anterior."
+                comparacion = f"Disminución de {abs(diferencia):.2f} grados respecto a la sesión anterior."
             else:
-                comparacion = "Sin cambio en el angulo maximo respecto a la sesion anterior."
+                comparacion = "Sin cambio en el ángulo máximo respecto a la sesión anterior."
         except (TypeError, ValueError, KeyError):
-            comparacion = "Sesion anterior sin angulo maximo comparable."
+            comparacion = "Sesión anterior sin ángulo máximo comparable."
 
     fila = {
         "fecha": resumen.get("fecha", ""),
@@ -76,10 +79,10 @@ def generar_reporte_rehabilitacion_csv(
         "ejercicio": ejercicio,
         "angulo_minimo_objetivo": resumen.get("angulo_minimo_objetivo")
         if resumen.get("angulo_minimo_objetivo") is not None
-        else configuracion.get("angulo_minimo", ""),
+        else configuracion.get("angulo_minimo", rango_objetivo.get("minimo", "")),
         "angulo_maximo_objetivo": resumen.get("angulo_maximo_objetivo")
         if resumen.get("angulo_maximo_objetivo") is not None
-        else configuracion.get("angulo_maximo", ""),
+        else configuracion.get("angulo_maximo", rango_objetivo.get("maximo", "")),
         "angulo_maximo_alcanzado": angulo_actual if angulo_actual is not None else "",
         "repeticiones_realizadas": resumen.get("repeticiones_estimadas", 0),
         "porcentaje_dentro_rango": resumen.get("porcentaje_dentro_rango", 0.0),

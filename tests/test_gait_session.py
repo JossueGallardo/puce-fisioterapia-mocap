@@ -3,6 +3,7 @@ import csv
 from puce_mocap.gait_analyzer import analizar_marcha
 from puce_mocap.gait_report import generar_reporte_marcha_csv
 from puce_mocap.gait_session import GaitSession
+from puce_mocap.gait_temporal import GaitTemporalMetrics
 
 
 def esqueleto_marcha_normal():
@@ -29,7 +30,8 @@ def test_sesion_marcha_acumula_frames_validos_y_alertas():
     sesion = GaitSession()
 
     sesion.registrar_resultado(analizar_marcha(esqueleto_marcha_normal()))
-    sesion.registrar_resultado(analizar_marcha(esqueleto_con_asimetria()))
+    temporal = GaitTemporalMetrics(160.0, 140.0, 20.0, 0.4, 4, "m")
+    sesion.registrar_resultado(analizar_marcha(esqueleto_con_asimetria(), metricas_temporales=temporal))
     sesion.registrar_resultado(analizar_marcha({"right_hip": [0.0, 1.0, 0.0]}))
 
     assert sesion.total_frames == 3
@@ -52,8 +54,8 @@ def test_sesion_marcha_exporta_resumen():
     assert resumen["frames_validos"] == 1
     assert resumen["porcentaje_verde"] == 100.0
     assert resumen["promedio_inclinacion_tronco"] == 0.0
-    assert resumen["promedio_asimetria_rodillas"] == 0.0
-    assert resumen["promedio_longitud_paso"] == 0.4
+    assert resumen["promedio_asimetria_rodillas"] is None
+    assert resumen["promedio_longitud_paso"] is None
     assert resumen["estado_global"] == "NORMAL"
 
 

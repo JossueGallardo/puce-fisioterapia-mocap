@@ -6,6 +6,8 @@ recursive-exclude * *.py[co]
 
 include bin/*
 include assets*
+recursive-include puce_mocap/resources *.png *.json
+recursive-exclude freemocap/.idea *
 include *.md
 
 # If including data files in the package, add them like:

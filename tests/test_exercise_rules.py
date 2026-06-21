@@ -2,7 +2,7 @@ import pytest
 
 from puce_mocap.exercise_rules import (
     ESTADO_CORRECTO,
-    ESTADO_CORREGIR,
+    ESTADO_EN_MOVIMIENTO,
     evaluar_peso_muerto,
     evaluar_press_hombro,
     evaluar_sentadilla,
@@ -58,13 +58,12 @@ def test_sentadilla_correcta_con_rodilla_entre_70_y_100_grados():
     assert feedback.angulos["angulo_rodilla"] == pytest.approx(90.0)
 
 
-def test_sentadilla_incorrecta_por_rodilla_fuera_de_rango():
+def test_sentadilla_en_transicion_no_marca_error_de_postura():
     feedback = evaluar_sentadilla(sentadilla_incorrecta_por_rodilla())
 
-    assert feedback.estado == ESTADO_CORREGIR
-    assert feedback.color == "rojo"
+    assert feedback.estado == ESTADO_EN_MOVIMIENTO
+    assert feedback.fase == "inicio"
     assert feedback.angulos["angulo_rodilla"] == pytest.approx(180.0)
-    assert any("Rodilla fuera" in mensaje for mensaje in feedback.mensajes)
 
 
 def test_press_hombro_en_extension_correcta():
@@ -75,10 +74,9 @@ def test_press_hombro_en_extension_correcta():
     assert any("Brazo extendido" in mensaje for mensaje in feedback.mensajes)
 
 
-def test_peso_muerto_con_tronco_dentro_de_rango():
+def test_peso_muerto_de_pie_es_inicio_y_no_objetivo_correcto():
     feedback = evaluar_peso_muerto(peso_muerto_tronco_correcto())
 
-    assert feedback.estado == ESTADO_CORRECTO
+    assert feedback.estado == ESTADO_EN_MOVIMIENTO
+    assert feedback.fase == "inicio"
     assert feedback.angulos["desviacion_tronco"] == pytest.approx(0.0)
-    assert any("Tronco dentro" in mensaje for mensaje in feedback.mensajes)
-

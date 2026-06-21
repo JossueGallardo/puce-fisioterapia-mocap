@@ -1,4 +1,4 @@
-"""Utilidades para calcular angulos articulares con coordenadas 2D o 3D."""
+"""Utilidades para calcular ángulos articulares con coordenadas 2D o 3D."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def _convertir_vector(valor, nombre: str) -> np.ndarray:
 
 
 def calcular_angulo_vectores(vector_a, vector_b) -> float:
-    """Calcula el angulo en grados entre dos vectores 2D o 3D.
+    """Calcula el ángulo en grados entre dos vectores 2D o 3D.
 
     Acepta listas, tuplas o arreglos NumPy. Si alguno de los vectores tiene
     norma cero, lanza ValueError para evitar divisiones invalidas.
@@ -43,10 +43,10 @@ def calcular_angulo_vectores(vector_a, vector_b) -> float:
 
 
 def calcular_angulo(punto_a, punto_b, punto_c) -> float:
-    """Calcula el angulo en el punto B formado por los puntos A-B-C.
+    """Calcula el ángulo en el punto B formado por los puntos A-B-C.
 
     Cada punto debe tener coordenadas 2D o 3D en formato lista, tupla o arreglo
-    NumPy. Retorna el angulo en grados como float.
+    NumPy. Retorna el ángulo en grados como float.
     """
     punto_a_np = _convertir_vector(punto_a, "punto_a")
     punto_b_np = _convertir_vector(punto_b, "punto_b")

@@ -1,10 +1,12 @@
-"""Reportes CSV simples para el modulo de caminadora."""
+"""Reportes CSV simples para el módulo de caminadora."""
 
 from __future__ import annotations
 
 import csv
 from pathlib import Path
 from typing import Mapping
+
+from puce_mocap.app_paths import reports_dir
 
 REPORT_FIELDS = [
     "fecha",
@@ -21,11 +23,11 @@ REPORT_FIELDS = [
     "observaciones",
 ]
 
-DEFAULT_REPORT_PATH = Path("reports") / "semana_4_gait_report.csv"
+DEFAULT_REPORT_PATH = reports_dir() / "semana_4_gait_report.csv"
 
 
 def generar_reporte_marcha_csv(resumen: Mapping, ruta_salida: str | Path | None = None) -> Path:
-    """Genera un reporte CSV de una sesion de marcha."""
+    """Genera un reporte CSV de una sesión de marcha."""
     ruta = Path(ruta_salida) if ruta_salida is not None else DEFAULT_REPORT_PATH
     ruta.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,6 +1,7 @@
 import pytest
 
 from puce_mocap.gait_analyzer import ESTADO_ATENCION, ESTADO_NORMAL, ESTADO_REVISAR, analizar_marcha
+from puce_mocap.gait_temporal import GaitTemporalMetrics
 
 
 def esqueleto_marcha_normal():
@@ -39,17 +40,19 @@ def test_analizar_marcha_calcula_metricas_basicas_normales():
     assert resultado.metricas["inclinacion_tronco"] == pytest.approx(0.0)
     assert resultado.metricas["angulo_rodilla_derecha"] == pytest.approx(180.0)
     assert resultado.metricas["angulo_rodilla_izquierda"] == pytest.approx(180.0)
-    assert resultado.metricas["asimetria_rodillas"] == pytest.approx(0.0)
-    assert resultado.metricas["longitud_paso"] == pytest.approx(0.4)
+    assert resultado.metricas["asimetria_rodillas"] is None
+    assert resultado.metricas["longitud_paso"] is None
+    assert resultado.metricas["separacion_tobillos"] == pytest.approx(0.4)
 
 
-def test_analizar_marcha_marca_amarillo_por_asimetria_moderada():
-    resultado = analizar_marcha(esqueleto_con_asimetria())
+def test_analizar_marcha_marca_amarillo_por_asimetria_de_ciclos():
+    temporal = GaitTemporalMetrics(160.0, 140.0, 20.0, 0.4, 4, "m")
+    resultado = analizar_marcha(esqueleto_con_asimetria(), metricas_temporales=temporal)
 
     assert resultado.estado == ESTADO_ATENCION
     assert resultado.color == "amarillo"
     assert resultado.metricas["asimetria_rodillas"] > 10.0
-    assert any("Asimetria" in mensaje for mensaje in resultado.mensajes)
+    assert any("Asimetría" in mensaje for mensaje in resultado.mensajes)
 
 
 def test_analizar_marcha_marca_rojo_por_inclinacion_alta():

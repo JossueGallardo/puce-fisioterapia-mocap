@@ -1,58 +1,38 @@
-# Menú principal gráfico integrado
+# Menú principal Qt integrado
 
-## Objetivo
-
-Centralizar el acceso a los tres módulos PUCE, FreeMoCap original y las verificaciones técnicas mediante una interfaz OpenCV coherente con los dashboards del proyecto.
-
-## Comando recomendado
+## Ejecución
 
 ```powershell
 python -m puce_mocap.main_menu
+# o, después de instalar el proyecto
+puce-mocap
 ```
 
-No es necesario escribir opciones en la consola. La selección principal se realiza con el mouse sobre tarjetas gráficas.
+## Arquitectura vigente
 
-## Opciones gráficas
+El menú, Pesas, Rehabilitación y Análisis de marcha son páginas de una única `QMainWindow` de PySide6. Los controles son widgets Qt interactivos, funcionan con mouse y teclado y se adaptan al escalado de Windows.
 
-- **Módulo 1 - Ejercicios con pesas:** abre sentadilla, press de hombro y peso muerto.
-- **Módulo 2 - Rehabilitación:** abre perfiles ficticios, rangos configurables y seis ejercicios terapéuticos.
-- **Módulo 3 - Caminadora:** abre métricas de marcha y semáforo de alertas.
-- **FreeMoCap original:** ejecuta `python -m freemocap` sin alterar su núcleo.
-- **Verificar entorno:** muestra visualmente OpenCV, `cv2.aruco`, MediaPipe y `pose_landmark_cpu.binarypb`; incluye un botón para ejecutar pytest.
-- **Salir del sistema:** cierra el menú de forma segura.
+La captura OpenCV y la inferencia MediaPipe se ejecutan en un `QThread`. El modelo se prepara en segundo plano al abrir la aplicación, pero la cámara solo se abre cuando el usuario pulsa `Iniciar cámara`. Entrar a un módulo no inicia el registro ni contabiliza repeticiones.
 
-## Funcionamiento
+El selector de cámara usa los dispositivos de vídeo enumerados por Qt; no muestra índices ficticios del 0 al 10. También permite elegir entre `640 × 480` y `1280 × 720`.
 
-El menú utiliza `subprocess.run` y `sys.executable`. Al abrir un módulo:
+FreeMoCap original permanece aislado y se abre mediante `QProcess`. La ejecución de pytest también es asíncrona y no congela la ventana.
 
-1. La ventana del menú se oculta.
-2. El módulo seleccionado se ejecuta como proceso independiente.
-3. Al presionar `q` o cerrar la ventana del módulo, su proceso termina.
-4. El menú gráfico reaparece automáticamente y queda listo para otra selección.
+## Fuentes de datos
 
-Si un módulo termina con error, el menú vuelve a mostrarse e informa el código de salida en su barra de estado. Un fallo aislado no cierra todo el sistema.
+- **Cámara:** MediaPipe Pose en vivo, con coordenadas world y filtro de visibilidad 0.5.
+- **Sesión FreeMoCap:** carpeta que contenga `output_data/*_body_3d_xyz.npy`.
+- Al importar se solicita la unidad de calibración; si se desconoce se usa `sin_especificar`.
+- La reproducción incluye pausa y deslizador por fotograma.
 
-## Interacción alternativa
+## Flujo de trabajo
 
-El mouse es el control principal. También se mantienen teclas y flechas como respaldo de accesibilidad:
+1. Abrir el módulo requerido.
+2. Revisar el paciente y los rangos configurados.
+3. Pulsar `Iniciar cámara` o importar una sesión FreeMoCap.
+4. Pulsar `Iniciar ejercicio` o `Iniciar sesión` para comenzar el registro.
+5. Finalizar y guardar el reporte.
 
-- `1` a `6`: activar la opción correspondiente.
-- Flechas: cambiar la selección.
-- `Enter`: abrir la tarjeta seleccionada.
-- `Esc` o `q`: salir o volver desde la verificación.
+## Cierre seguro
 
-## Wrapper opcional
-
-```powershell
-python examples\menu_principal_demo.py
-```
-
-## Evidencias esperadas
-
-- Pantalla gráfica con logos PUCE y Fe y Alegría.
-- Las seis tarjetas visibles sin superposición.
-- Selección de cada módulo con el mouse.
-- Menú oculto mientras un módulo está abierto.
-- Regreso automático al cerrar Pesas, Rehabilitación o Caminadora.
-- Vista gráfica de verificación con OpenCV, ArUco, MediaPipe y pytest.
-- Créditos visibles a FreeMoCap, Jon Matthis y equipo FreeMoCap, con licencia AGPLv3.
+Al volver al menú o cerrar la aplicación se guardan las sesiones con datos, se detiene el worker, se libera la cámara y se terminan procesos secundarios. Los reportes y perfiles reales se guardan en el directorio local de la aplicación, fuera de Git.

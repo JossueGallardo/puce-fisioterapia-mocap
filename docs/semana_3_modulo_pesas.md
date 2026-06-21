@@ -1,29 +1,31 @@
-# Semana 3 - Modulo de ejercicios con pesas
+# Semana 3 - Módulo de ejercicios con pesas
+
+> Actualización 2026: la interfaz final usa PySide6 y el conteo exige el ciclo completo inicio-objetivo-inicio. La cámara y el contador requieren inicio explícito. Los rangos y los datos del paciente son editables antes de comenzar. Las secciones OpenCV posteriores describen prototipos históricos, no la GUI vigente.
 
 ## Objetivo
 
-Completar el Modulo 1 con una base funcional para analizar ejercicios con pesas, tanto con datos simulados como con un prototipo real en vivo usando camara, esqueleto superpuesto y retroalimentacion visual.
+Completar el Módulo 1 con una base funcional para analizar ejercicios con pesas, tanto con datos simulados como con un prototipo real en vivo usando cámara, esqueleto superpuesto y retroalimentación visual.
 
-FreeMoCap sigue siendo el proyecto base. Para el prototipo de pose en vivo se usa MediaPipe Pose como complemento ligero, porque permite detectar articulaciones directamente desde la camara sin modificar el nucleo de FreeMoCap. La integracion gradual con datos 3D de FreeMoCap queda preparada mediante `puce_mocap/freemocap_adapter.py`.
+FreeMoCap sigue siendo el proyecto base. Para el prototipo de pose en vivo se usa MediaPipe Pose como complemento ligero, porque permite detectar articulaciones directamente desde la cámara sin modificar el núcleo de FreeMoCap.
 
 ## Contexto institucional
 
-- Institucion: Pontificia Universidad Catolica del Ecuador
-- Programa: Vinculacion con la Comunidad
-- Contraparte: Fe y Alegria Ecuador
+- Institución: Pontificia Universidad Católica del Ecuador
+- Programa: Vinculación con la Comunidad
+- Contraparte: Fe y Alegría Ecuador
 - Año: 2026
 - Proyecto base: FreeMoCap - Free Motion Capture for Everyone
 - Repositorio original: https://github.com/freemocap/freemocap
 - Licencia original: AGPLv3
 
-## Que hace el modulo
+## Qué hace el módulo
 
-- Captura video desde la camara 0.
+- Captura vídeo desde una cámara detectada por el sistema.
 - Detecta pose humana en vivo con MediaPipe Pose.
 - Dibuja el esqueleto sobre la imagen con OpenCV.
 - Convierte landmarks a un diccionario compatible con `exercise_rules.py`.
-- Calcula angulos articulares con `puce_mocap.angle_utils`.
-- Muestra indicador verde/rojo, estado, retroalimentacion, repeticiones y porcentaje correcto.
+- Calcula ángulos articulares con `puce_mocap.angle_utils`.
+- Muestra indicador verde/rojo, estado, retroalimentación, repeticiones y porcentaje correcto.
 - Genera reportes CSV simples en `reports/`.
 
 ## Ejercicios implementados

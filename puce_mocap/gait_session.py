@@ -1,4 +1,4 @@
-"""Sesion de analisis de marcha para Semana 4."""
+"""Sesión de análisis de marcha para Semana 4."""
 
 from __future__ import annotations
 
@@ -6,15 +6,25 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import math
 import time
+from uuid import uuid4
 
 from puce_mocap.gait_analyzer import ESTADO_ATENCION, ESTADO_NORMAL, ESTADO_REVISAR, GaitAnalysisResult
 
 
-def _promedio(valores: list[float]) -> float | None:
-    valores_validos = [valor for valor in valores if not math.isnan(valor)]
-    if not valores_validos:
-        return None
-    return sum(valores_validos) / len(valores_validos)
+@dataclass
+class _OnlineStats:
+    count: int = 0
+    total: float = 0.0
+
+    def add(self, value: float | None) -> None:
+        if value is None or not math.isfinite(float(value)):
+            return
+        self.count += 1
+        self.total += float(value)
+
+    @property
+    def mean(self) -> float | None:
+        return None if self.count == 0 else self.total / self.count
 
 
 def _redondear(valor: float | None, decimales: int = 2) -> float | None:
@@ -25,8 +35,10 @@ def _redondear(valor: float | None, decimales: int = 2) -> float | None:
 
 @dataclass
 class GaitSession:
-    """Acumula resultados de una sesion de caminadora."""
+    """Acumula resultados de una sesión de caminadora."""
 
+    session_id: str = field(default_factory=lambda: uuid4().hex)
+    fuente_datos: str = "mediapipe_live"
     fecha: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
     inicio_monotonic: float = field(default_factory=time.monotonic)
     total_frames: int = 0
@@ -35,12 +47,12 @@ class GaitSession:
     alertas_amarillas: int = 0
     alertas_rojas: int = 0
     mensajes_principales: list[str] = field(default_factory=list)
-    _inclinaciones: list[float] = field(default_factory=list, init=False, repr=False)
-    _asimetrias: list[float] = field(default_factory=list, init=False, repr=False)
-    _longitudes_paso: list[float] = field(default_factory=list, init=False, repr=False)
+    _inclinaciones: _OnlineStats = field(default_factory=_OnlineStats, init=False, repr=False)
+    _asimetrias: _OnlineStats = field(default_factory=_OnlineStats, init=False, repr=False)
+    _longitudes_paso: _OnlineStats = field(default_factory=_OnlineStats, init=False, repr=False)
 
     def registrar_resultado(self, resultado: GaitAnalysisResult) -> None:
-        """Registra un frame analizado y actualiza metricas acumuladas."""
+        """Registra un fotograma analizado y actualiza métricas acumuladas."""
         self.total_frames += 1
         if not resultado.frame_valido:
             self._registrar_mensajes(resultado)
@@ -66,13 +78,13 @@ class GaitSession:
                 self.mensajes_principales.append(mensaje)
 
     @staticmethod
-    def _agregar_metrica(destino: list[float], valor: float | None) -> None:
-        if valor is not None:
-            destino.append(float(valor))
+    def _agregar_metrica(destino: _OnlineStats, valor: float | str | None) -> None:
+        if isinstance(valor, (int, float)):
+            destino.add(float(valor))
 
     @property
     def duracion_segundos(self) -> float:
-        """Duracion transcurrida desde el inicio de sesion."""
+        """Duración transcurrida desde el inicio de sesión."""
         return max(0.0, time.monotonic() - self.inicio_monotonic)
 
     @property
@@ -94,19 +106,21 @@ class GaitSession:
 
     @property
     def estado_global(self) -> str:
-        """Resume la sesion sin emitir diagnosticos clinicos."""
+        """Resume la sesión sin emitir diagnósticos clínicos."""
         if self.frames_validos == 0:
             return "SIN_DATOS_VALIDOS"
-        if self.alertas_rojas > 0:
+        if self.porcentaje_rojo >= 20.0:
             return ESTADO_REVISAR
-        if self.alertas_amarillas > 0:
+        if self.porcentaje_rojo >= 5.0 or self.porcentaje_amarillo + self.porcentaje_rojo >= 20.0:
             return ESTADO_ATENCION
         return ESTADO_NORMAL
 
     def exportar_resumen(self, duracion_segundos: float | None = None) -> dict:
-        """Exporta la sesion a un diccionario para reportes CSV."""
+        """Exporta la sesión a un diccionario para reportes CSV."""
         duracion = self.duracion_segundos if duracion_segundos is None else duracion_segundos
         return {
+            "session_id": self.session_id,
+            "fuente_datos": self.fuente_datos,
             "fecha": self.fecha,
             "duracion_segundos": round(duracion, 2),
             "total_frames": self.total_frames,
@@ -114,9 +128,9 @@ class GaitSession:
             "porcentaje_verde": round(self.porcentaje_verde, 2),
             "porcentaje_amarillo": round(self.porcentaje_amarillo, 2),
             "porcentaje_rojo": round(self.porcentaje_rojo, 2),
-            "promedio_inclinacion_tronco": _redondear(_promedio(self._inclinaciones)),
-            "promedio_asimetria_rodillas": _redondear(_promedio(self._asimetrias)),
-            "promedio_longitud_paso": _redondear(_promedio(self._longitudes_paso)),
+            "promedio_inclinacion_tronco": _redondear(self._inclinaciones.mean),
+            "promedio_asimetria_rodillas": _redondear(self._asimetrias.mean),
+            "promedio_longitud_paso": _redondear(self._longitudes_paso.mean),
             "estado_global": self.estado_global,
             "observaciones": list(self.mensajes_principales),
         }

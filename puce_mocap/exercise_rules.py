@@ -11,6 +11,8 @@ from puce_mocap.angle_utils import calcular_angulo, calcular_angulo_vectores
 
 ESTADO_CORRECTO = "CORRECTO"
 ESTADO_CORREGIR = "CORREGIR_POSTURA"
+ESTADO_EN_MOVIMIENTO = "EN_MOVIMIENTO"
+ESTADO_POSTURA_INCOMPLETA = "POSTURA_INCOMPLETA"
 COLOR_VERDE = "verde"
 COLOR_ROJO = "rojo"
 
@@ -27,11 +29,27 @@ class ExerciseFeedback:
     color: str
     angulos: dict[str, float] = field(default_factory=dict)
     mensajes: list[str] = field(default_factory=list)
+    fase: str = "transicion"
+    frame_valido: bool = True
+    forma_correcta: bool | None = None
+    repeticion_completada: bool = False
+    angulo_principal: str | None = None
 
     @property
     def es_correcto(self) -> bool:
         """Indica si el frame evaluado esta dentro de las reglas definidas."""
+        if self.forma_correcta is not None:
+            return self.forma_correcta
         return self.estado == ESTADO_CORRECTO
+
+    @property
+    def form_ok(self) -> bool | None:
+        """Alias estable para integraciones que usan nombres en ingles."""
+        return self.forma_correcta
+
+    @property
+    def repetition_completed(self) -> bool:
+        return self.repeticion_completada
 
     def to_dict(self) -> dict:
         """Exporta el resultado a un diccionario simple."""
@@ -41,6 +59,11 @@ class ExerciseFeedback:
             "color": self.color,
             "angulos": dict(self.angulos),
             "mensajes": list(self.mensajes),
+            "fase": self.fase,
+            "frame_valido": self.frame_valido,
+            "forma_correcta": self.forma_correcta,
+            "repeticion_completada": self.repeticion_completada,
+            "angulo_principal": self.angulo_principal,
         }
 
 
@@ -62,7 +85,7 @@ def _punto(esqueleto_3d: Esqueleto3D, *nombres: str) -> np.ndarray:
             return punto
 
     opciones = ", ".join(nombres)
-    raise ValueError(f"No se encontro ningun punto requerido: {opciones}.")
+    raise ValueError(f"No se encontró ningún punto requerido: {opciones}.")
 
 
 def _punto_opcional(esqueleto_3d: Esqueleto3D, *nombres: str) -> np.ndarray | None:
@@ -81,9 +104,10 @@ def _nombres_lado(lado: str, articulacion: str) -> tuple[str, ...]:
         "shoulder": ("shoulder", "hombro"),
         "elbow": ("elbow", "codo"),
         "wrist": ("wrist", "muneca", "muñeca"),
+        "ear": ("ear", "oreja"),
     }
     if articulacion not in mapa:
-        raise ValueError(f"Articulacion no soportada: {articulacion}.")
+        raise ValueError(f"Articulación no soportada: {articulacion}.")
 
     nombres = []
     for base in mapa[articulacion]:
@@ -112,18 +136,43 @@ def _centro_bilateral(esqueleto_3d: Esqueleto3D, articulacion: str) -> np.ndarra
     return (punto_derecho + punto_izquierdo) / 2.0
 
 
-def _resultado(ejercicio: str, correcto: bool, angulos: dict[str, float], mensajes: list[str]) -> ExerciseFeedback:
+def _resultado(
+    ejercicio: str,
+    correcto: bool | None,
+    angulos: dict[str, float],
+    mensajes: list[str],
+    *,
+    fase: str,
+    angulo_principal: str,
+) -> ExerciseFeedback:
+    if correcto is None:
+        estado = ESTADO_EN_MOVIMIENTO
+        color = "amarillo"
+    else:
+        estado = ESTADO_CORRECTO if correcto else ESTADO_CORREGIR
+        color = COLOR_VERDE if correcto else COLOR_ROJO
     return ExerciseFeedback(
         ejercicio=ejercicio,
-        estado=ESTADO_CORRECTO if correcto else ESTADO_CORREGIR,
-        color=COLOR_VERDE if correcto else COLOR_ROJO,
+        estado=estado,
+        color=color,
         angulos={nombre: float(valor) for nombre, valor in angulos.items()},
         mensajes=mensajes,
+        fase=fase,
+        forma_correcta=correcto,
+        angulo_principal=angulo_principal,
     )
 
 
+def _fase_angular(angulo: float, inicio: tuple[float, float], objetivo: tuple[float, float]) -> str:
+    if inicio[0] <= angulo <= inicio[1]:
+        return "inicio"
+    if objetivo[0] <= angulo <= objetivo[1]:
+        return "objetivo"
+    return "transicion"
+
+
 def _angulo_tobillo(knee: np.ndarray, ankle: np.ndarray, foot: np.ndarray | None) -> float:
-    """Aproxima la flexion de tobillo como desviacion respecto a 90 grados."""
+    """Aproxima la flexión de tobillo como desviación respecto a 90 grados."""
     if foot is not None:
         angulo_crudo = calcular_angulo(knee, ankle, foot)
         return abs(90.0 - angulo_crudo)
@@ -135,40 +184,46 @@ def _angulo_tobillo(knee: np.ndarray, ankle: np.ndarray, foot: np.ndarray | None
 
 def evaluar_sentadilla(esqueleto_3d: Esqueleto3D) -> ExerciseFeedback:
     """Evalua una sentadilla con reglas iniciales de rodilla, cadera y tobillo."""
-    lado = "right"
-    hip = _punto_lado(esqueleto_3d, lado, "hip")
-    knee = _punto_lado(esqueleto_3d, lado, "knee")
-    ankle = _punto_lado(esqueleto_3d, lado, "ankle")
-    shoulder = _punto_lado(esqueleto_3d, lado, "shoulder")
-    foot = _punto_lado_opcional(esqueleto_3d, lado, "foot")
+    angulos_rodilla: list[float] = []
+    angulos_cadera: list[float] = []
+    angulos_tobillo: list[float] = []
+    for lado in ("right", "left"):
+        hip = _punto_lado_opcional(esqueleto_3d, lado, "hip")
+        knee = _punto_lado_opcional(esqueleto_3d, lado, "knee")
+        ankle = _punto_lado_opcional(esqueleto_3d, lado, "ankle")
+        shoulder = _punto_lado_opcional(esqueleto_3d, lado, "shoulder")
+        if hip is None or knee is None or ankle is None or shoulder is None:
+            continue
+        foot = _punto_lado_opcional(esqueleto_3d, lado, "foot")
+        angulos_rodilla.append(calcular_angulo(hip, knee, ankle))
+        angulos_cadera.append(calcular_angulo(shoulder, hip, knee))
+        angulos_tobillo.append(_angulo_tobillo(knee, ankle, foot))
+    if not angulos_rodilla:
+        raise ValueError("No hay un lado completo para evaluar la sentadilla.")
 
-    angulo_rodilla = calcular_angulo(hip, knee, ankle)
-    angulo_cadera = calcular_angulo(shoulder, hip, knee)
-    angulo_tobillo = _angulo_tobillo(knee, ankle, foot)
-
-    correcto = True
+    angulo_rodilla = float(np.mean(angulos_rodilla))
+    angulo_cadera = float(np.mean(angulos_cadera))
+    angulo_tobillo = float(max(angulos_tobillo))
+    fase = _fase_angular(angulo_rodilla, (160.0, 180.0), (70.0, 100.0))
+    correcto: bool | None = None
     mensajes: list[str] = []
 
-    if 70.0 <= angulo_rodilla <= 100.0:
+    if fase == "objetivo":
+        correcto = True
         mensajes.append("Rodilla dentro del rango esperado para el punto bajo de la sentadilla.")
+        if angulo_tobillo > 35.0:
+            correcto = False
+            mensajes.append("Tobillo supera 35 grados; revisa el avance de la rodilla.")
+        if angulo_cadera < 45.0:
+            correcto = False
+            mensajes.append("Cadera menor a 45 grados; revisar postura con el fisioterapeuta.")
+    elif fase == "inicio":
+        mensajes.append("Posicion inicial confirmada.")
     else:
-        correcto = False
-        mensajes.append("Rodilla fuera del rango 70-100 grados; revisa la profundidad de la sentadilla.")
+        mensajes.append("Movimiento en curso; continua hasta el rango objetivo.")
 
-    if angulo_tobillo <= 35.0:
-        mensajes.append("Tobillo dentro del limite aproximado de avance.")
-    else:
-        correcto = False
-        mensajes.append("Tobillo supera 35 grados; evita que la rodilla avance demasiado sobre el pie.")
-
-    if angulo_cadera >= 45.0:
-        mensajes.append("Cadera y tronco dentro del rango minimo esperado.")
-    else:
-        correcto = False
-        mensajes.append("Cadera menor a 45 grados; revisa la postura del tronco y evita redondear la espalda.")
-
-    if correcto:
-        mensajes.append("Postura correcta.")
+    if correcto is True:
+        mensajes.append("Postura correcta en el punto objetivo.")
 
     return _resultado(
         "Sentadilla",
@@ -179,11 +234,13 @@ def evaluar_sentadilla(esqueleto_3d: Esqueleto3D) -> ExerciseFeedback:
             "angulo_cadera": angulo_cadera,
         },
         mensajes,
+        fase=fase,
+        angulo_principal="angulo_rodilla",
     )
 
 
 def evaluar_press_hombro(esqueleto_3d: Esqueleto3D, lado: str = "right") -> ExerciseFeedback:
-    """Evalua press de hombro por codo inicial o extension superior."""
+    """Evalúa press de hombro por codo inicial o extensión superior."""
     lado = _normalizar_lado(lado)
     shoulder = _punto_lado(esqueleto_3d, lado, "shoulder")
     elbow = _punto_lado(esqueleto_3d, lado, "elbow")
@@ -196,14 +253,15 @@ def evaluar_press_hombro(esqueleto_3d: Esqueleto3D, lado: str = "right") -> Exer
 
     codo_inicio_correcto = 80.0 <= angulo_codo <= 100.0
     brazo_extendido = 170.0 <= angulo_codo <= 180.0
-    correcto = codo_inicio_correcto or brazo_extendido
+    fase = _fase_angular(angulo_codo, (80.0, 100.0), (170.0, 180.0))
+    correcto: bool | None = True if fase in {"inicio", "objetivo"} else None
 
     if codo_inicio_correcto:
         mensajes.append("Codo cercano a 90 grados para la fase inicial del press.")
     if brazo_extendido:
         mensajes.append("Brazo extendido dentro del rango 170-180 grados.")
-    if not correcto:
-        mensajes.append("Codo fuera del rango esperado; revisa la fase del press de hombro.")
+    if fase == "transicion":
+        mensajes.append("Movimiento en curso; continúa entre inicio y extensión.")
 
     if hip is not None:
         angulos["angulo_hombro"] = calcular_angulo(hip, shoulder, elbow)
@@ -219,13 +277,22 @@ def evaluar_press_hombro(esqueleto_3d: Esqueleto3D, lado: str = "right") -> Exer
     else:
         mensajes.append("Compensacion lumbar: validacion futura cuando existan puntos completos del tronco.")
 
-    if correcto:
+    if correcto is True:
         mensajes.append("Postura correcta.")
 
-    return _resultado("Press de hombro", correcto, angulos, mensajes)
+    return _resultado(
+        "Press de hombro",
+        correcto,
+        angulos,
+        mensajes,
+        fase=fase,
+        angulo_principal="angulo_codo",
+    )
 
 
-def evaluar_peso_muerto(esqueleto_3d: Esqueleto3D) -> ExerciseFeedback:
+def evaluar_peso_muerto(  # noqa: C901
+    esqueleto_3d: Esqueleto3D, vista: str = "lateral"
+) -> ExerciseFeedback:
     """Evalua peso muerto con desviacion de tronco y control frontal opcional."""
     hip = _punto_lado(esqueleto_3d, "right", "hip")
     knee = _punto_lado(esqueleto_3d, "right", "knee")
@@ -249,33 +316,51 @@ def evaluar_peso_muerto(esqueleto_3d: Esqueleto3D) -> ExerciseFeedback:
         "angulo_cadera": angulo_cadera,
     }
     mensajes: list[str] = []
-    correcto = True
+    fase = _fase_angular(angulo_cadera, (160.0, 180.0), (80.0, 130.0))
+    correcto: bool | None = True if fase == "objetivo" else None
+    mensajes.append(f"Inclinacion del tronco observada: {desviacion_tronco:.1f} grados.")
 
-    if desviacion_tronco <= 20.0:
-        mensajes.append("Tronco dentro del rango de desviacion menor o igual a 20 grados.")
-    else:
-        correcto = False
-        mensajes.append("Tronco supera 20 grados de desviacion; revisa la alineacion de la espalda.")
+    ear = _punto_lado_opcional(esqueleto_3d, "right", "ear")
+    if ear is not None:
+        desviacion_espalda = abs(180.0 - calcular_angulo(ear, shoulder, hip))
+        angulos["desviacion_espalda"] = desviacion_espalda
+        if fase == "objetivo" and desviacion_espalda > 20.0:
+            correcto = False
+            mensajes.append("La alineacion oreja-hombro-cadera supera 20 grados; revisar la espalda.")
 
     left_knee = _punto_lado_opcional(esqueleto_3d, "left", "knee")
     right_knee = _punto_lado_opcional(esqueleto_3d, "right", "knee")
     left_ankle = _punto_lado_opcional(esqueleto_3d, "left", "ankle")
     right_ankle = _punto_lado_opcional(esqueleto_3d, "right", "ankle")
-    if all(punto is not None for punto in (left_knee, right_knee, left_ankle, right_ankle)):
+    if vista.lower() == "frontal" and all(
+        punto is not None for punto in (left_knee, right_knee, left_ankle, right_ankle)
+    ):
         distancia_rodillas = float(np.linalg.norm(right_knee - left_knee))
         distancia_tobillos = float(np.linalg.norm(right_ankle - left_ankle))
         if distancia_tobillos > 0:
             relacion = distancia_rodillas / distancia_tobillos
             angulos["relacion_rodillas_tobillos"] = relacion
             if relacion < 0.75:
-                correcto = False
+                if fase == "objetivo":
+                    correcto = False
                 mensajes.append("Posible colapso de rodillas hacia adentro; revisar vista frontal.")
             else:
                 mensajes.append("Separacion de rodillas consistente con los tobillos.")
-    else:
-        mensajes.append("Colapso de rodillas: validacion futura con puntos izquierdo y derecho completos.")
+    elif vista.lower() != "frontal":
+        mensajes.append("La simetria de rodillas requiere una vista frontal adicional.")
 
-    if correcto:
-        mensajes.append("Postura correcta.")
+    if fase == "inicio":
+        mensajes.append("Posicion inicial confirmada.")
+    elif fase == "transicion":
+        mensajes.append("Movimiento en curso; continúa la flexión de cadera.")
+    elif correcto is True:
+        mensajes.append("Postura correcta en el punto objetivo.")
 
-    return _resultado("Peso muerto", correcto, angulos, mensajes)
+    return _resultado(
+        "Peso muerto",
+        correcto,
+        angulos,
+        mensajes,
+        fase=fase,
+        angulo_principal="angulo_cadera",
+    )

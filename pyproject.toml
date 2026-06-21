@@ -2,11 +2,13 @@
 # originally based on - https://realpython.com/pypi-publish-python-package/
 
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "freemocap"
+version = "1.8.2"
+description = "FreeMoCap fork with PUCE physiotherapy motion-analysis tools"
 readme = "README.md"
 authors = [
     { name = "Skelly FreeMoCap", email = "info@freemocap.org" },
@@ -85,13 +87,9 @@ dependencies = [
 
 requires-python = ">=3.10,<3.13"
 
-dynamic = ["version", "description"]
-
 [project.optional-dependencies]
-dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flit", "flake8", "flake8-bugbear", "flake8-bandit"]
-
-[project.packages]
-freemocap = { include = ["assets"] }
+puce = ["mediapipe>=0.10.14,<0.11"]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest", "pytest-cov", "flake8", "flake8-bugbear", "flake8-bandit"]
 
 [project.urls]
 Homepage = "https://freemocap.org"
@@ -120,9 +118,18 @@ push = true
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
+puce-mocap = "puce_mocap.main_menu:main"
 
 [tool.setuptools]
-py-modules = ["freemocap"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["freemocap*", "puce_mocap*"]
+exclude = ["freemocap.tests*"]
+
+[tool.setuptools.package-data]
+freemocap = ["assets/**/*"]
+puce_mocap = ["resources/assets/*.png", "resources/profiles/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

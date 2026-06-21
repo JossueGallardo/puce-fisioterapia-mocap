@@ -1,4 +1,4 @@
-"""Reportes CSV simples para el modulo de ejercicios con pesas."""
+"""Reportes CSV simples para el módulo de ejercicios con pesas."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import csv
 from datetime import datetime
 from pathlib import Path
 from typing import Mapping
+
+from puce_mocap.app_paths import reports_dir
 
 REPORT_FIELDS = [
     "fecha",
@@ -19,10 +21,10 @@ REPORT_FIELDS = [
 
 
 def generar_reporte_csv(resumen: Mapping, ruta_salida: str | Path | None = None) -> Path:
-    """Genera un reporte CSV de una sesion de ejercicio."""
+    """Genera un reporte CSV de una sesión de ejercicio."""
     if ruta_salida is None:
         marca_tiempo = datetime.now().strftime("%Y%m%d_%H%M%S")
-        ruta = Path("reports") / f"exercise_session_{marca_tiempo}.csv"
+        ruta = reports_dir() / f"exercise_session_{marca_tiempo}.csv"
     else:
         ruta = Path(ruta_salida)
 
@@ -39,4 +41,3 @@ def generar_reporte_csv(resumen: Mapping, ruta_salida: str | Path | None = None)
         writer.writerow(fila)
 
     return ruta
-

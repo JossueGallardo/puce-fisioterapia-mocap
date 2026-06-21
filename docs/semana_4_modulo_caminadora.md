@@ -1,4 +1,6 @@
-# Semana 4 - Modulo de caminadora y analisis de marcha
+# Semana 4 - Módulo de caminadora y análisis de marcha
+
+> Actualización 2026: la asimetría se calcula entre ciclos completos y la longitud de paso conserva la unidad de la fuente. Antes de dos ciclos por lado estas métricas se muestran como N/D.
 
 ## Objetivo
 

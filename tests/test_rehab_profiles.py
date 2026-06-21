@@ -23,7 +23,25 @@ def test_guardar_y_cargar_perfil_demo(tmp_path):
     cargado = cargar_perfil_paciente(ruta)
 
     assert cargado["nombre"] == "Paciente de prueba"
-    assert cargado["ejercicios"]["extension_rodilla"]["angulo_maximo"] == 180
+    assert cargado["schema_version"] == 2
+    assert cargado["ejercicios"]["extension_rodilla"]["rango_objetivo"]["maximo"] == 180
+
+
+def test_perfil_v1_se_migra_en_memoria_a_v2():
+    perfil = crear_perfil_demo()
+    configuracion = perfil["ejercicios"]["flexion_codo"]
+    perfil.pop("schema_version")
+    perfil["ejercicios"]["flexion_codo"] = {
+        "angulo_minimo": configuracion["rango_objetivo"]["minimo"],
+        "angulo_maximo": configuracion["rango_objetivo"]["maximo"],
+        "repeticiones_objetivo": 10,
+    }
+
+    from puce_mocap.rehab_profiles import normalizar_perfil_paciente
+
+    migrado = normalizar_perfil_paciente(perfil)
+    assert migrado["schema_version"] == 2
+    assert migrado["ejercicios"]["flexion_codo"]["rango_inicio"] == {"minimo": 160.0, "maximo": 180.0}
 
 
 def test_validar_perfil_error_si_falta_campo_obligatorio():

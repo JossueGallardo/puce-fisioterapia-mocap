@@ -1,4 +1,4 @@
-"""Analisis inicial de marcha para el Modulo 3 / Semana 4."""
+"""Análisis inicial de marcha para el Módulo 3 / Semana 4."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 from puce_mocap.angle_utils import calcular_angulo, calcular_angulo_vectores
+from puce_mocap.gait_temporal import GaitTemporalMetrics
 
 ESTADO_NORMAL = "NORMAL"
 ESTADO_ATENCION = "ATENCION"
@@ -18,7 +19,7 @@ COLOR_VERDE = "verde"
 COLOR_AMARILLO = "amarillo"
 COLOR_ROJO = "rojo"
 
-MENSAJE_POSTURA_INCOMPLETA = "Alejate de la camara hasta que se vean cabeza, cadera, rodillas, tobillos y pies."
+MENSAJE_POSTURA_INCOMPLETA = "Aléjate de la cámara hasta que se vean cabeza, cadera, rodillas, tobillos y pies."
 
 Punto = Sequence[float]
 Esqueleto = Mapping[str, Punto]
@@ -30,7 +31,7 @@ class GaitAnalysisResult:
 
     estado: str
     color: str
-    metricas: dict[str, float | None] = field(default_factory=dict)
+    metricas: dict[str, float | str | None] = field(default_factory=dict)
     mensajes: list[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
     frame_valido: bool = True
@@ -69,7 +70,7 @@ def _punto(indice: Mapping[str, tuple[str, Punto]], *nombres: str) -> np.ndarray
             nombre_original, valor = indice[clave]
             return _convertir_punto(valor, nombre_original)
     opciones = ", ".join(nombres)
-    raise ValueError(f"No se encontro ningun punto requerido: {opciones}.")
+    raise ValueError(f"No se encontró ningún punto requerido: {opciones}.")
 
 
 def _punto_opcional(indice: Mapping[str, tuple[str, Punto]], *nombres: str) -> np.ndarray | None:
@@ -116,13 +117,20 @@ def _resultado_incompleto(mensajes: list[str] | None = None) -> GaitAnalysisResu
             "asimetria_rodillas": None,
             "longitud_paso": None,
             "oscilacion_lateral_cadera": None,
+            "diferencia_rodillas_instantanea": None,
+            "ciclos_completados": 0.0,
+            "unidad_longitud": "sin_especificar",
         },
         mensajes=mensajes_resultado,
         frame_valido=False,
     )
 
 
-def analizar_marcha(esqueleto_3d: Esqueleto) -> GaitAnalysisResult:
+def analizar_marcha(  # noqa: C901
+    esqueleto_3d: Esqueleto,
+    vista: str = "lateral",
+    metricas_temporales: GaitTemporalMetrics | None = None,
+) -> GaitAnalysisResult:
     """Recibe coordenadas 2D/3D de articulaciones y retorna metricas de marcha.
 
     Esta funcion no emite diagnosticos medicos. Sus etiquetas solo orientan la
@@ -148,8 +156,8 @@ def analizar_marcha(esqueleto_3d: Esqueleto) -> GaitAnalysisResult:
         inclinacion_tronco = _desviacion_vertical(centro_hombros - centro_caderas)
         angulo_rodilla_derecha = calcular_angulo(right_hip, right_knee, right_ankle)
         angulo_rodilla_izquierda = calcular_angulo(left_hip, left_knee, left_ankle)
-        asimetria_rodillas = abs(angulo_rodilla_derecha - angulo_rodilla_izquierda)
-        longitud_paso = _distancia(left_ankle, right_ankle)
+        diferencia_instantanea = abs(angulo_rodilla_derecha - angulo_rodilla_izquierda)
+        separacion_tobillos = _distancia(left_ankle, right_ankle)
         oscilacion_lateral_cadera = float(abs(left_hip[0] - right_hip[0]))
     except ValueError as exc:
         return _resultado_incompleto([str(exc)])
@@ -158,9 +166,13 @@ def analizar_marcha(esqueleto_3d: Esqueleto) -> GaitAnalysisResult:
         "inclinacion_tronco": float(inclinacion_tronco),
         "angulo_rodilla_derecha": float(angulo_rodilla_derecha),
         "angulo_rodilla_izquierda": float(angulo_rodilla_izquierda),
-        "asimetria_rodillas": float(asimetria_rodillas),
-        "longitud_paso": float(longitud_paso),
+        "asimetria_rodillas": None if metricas_temporales is None else metricas_temporales.asymmetry,
+        "longitud_paso": None if metricas_temporales is None else metricas_temporales.step_length,
+        "separacion_tobillos": float(separacion_tobillos),
         "oscilacion_lateral_cadera": float(oscilacion_lateral_cadera),
+        "diferencia_rodillas_instantanea": float(diferencia_instantanea),
+        "ciclos_completados": float(0 if metricas_temporales is None else metricas_temporales.completed_cycles),
+        "unidad_longitud": "sin_especificar" if metricas_temporales is None else metricas_temporales.length_unit,
     }
 
     severidad = 0
@@ -173,15 +185,18 @@ def analizar_marcha(esqueleto_3d: Esqueleto) -> GaitAnalysisResult:
         mensajes.append("Inclinacion del tronco requiere atencion; mantener postura erguida.")
     else:
         severidad = max(severidad, 2)
-        mensajes.append("Inclinacion del tronco elevada; revisar con fisioterapeuta.")
+        mensajes.append("Inclinación del tronco elevada; revisar con fisioterapeuta.")
 
-    if asimetria_rodillas <= 10.0:
-        mensajes.append("Simetria de rodillas dentro del rango basico observado.")
+    asimetria_rodillas = metricas["asimetria_rodillas"]
+    if vista.lower() != "lateral":
+        mensajes.append("Vista frontal: las métricas de ciclo y paso se muestran como N/D.")
+    elif asimetria_rodillas is None:
+        mensajes.append("Simetria y longitud de paso N/D hasta completar dos ciclos por lado.")
+    elif float(asimetria_rodillas) <= 10.0:
+        mensajes.append("Simetría de picos de flexión dentro del rango técnico provisional.")
     else:
         severidad = max(severidad, 1)
-        mensajes.append("Asimetria entre rodillas mayor a 10 grados; observar la marcha.")
-
-    mensajes.append("Longitud de paso calculada entre tobillos.")
+        mensajes.append("Asimetría de ciclos mayor a 10 grados; revisar con fisioterapeuta.")
 
     if severidad == 0:
         estado = ESTADO_NORMAL
@@ -190,7 +205,7 @@ def analizar_marcha(esqueleto_3d: Esqueleto) -> GaitAnalysisResult:
     elif severidad == 1:
         estado = ESTADO_ATENCION
         color = COLOR_AMARILLO
-        mensajes.append("AMARILLO / ATENCION: revisar la tecnica durante la sesion.")
+        mensajes.append("AMARILLO / ATENCIÓN: revisar la técnica durante la sesión.")
     else:
         estado = ESTADO_REVISAR
         color = COLOR_ROJO
