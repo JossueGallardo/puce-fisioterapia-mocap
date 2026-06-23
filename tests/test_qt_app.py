@@ -102,6 +102,17 @@ def test_rehabilitacion_aplica_datos_del_paciente_y_rangos():
     assert page.sessions[page.exercise].codigo_paciente == "PAC-EDIT"
 
 
+def test_rehabilitacion_qt_permita_automatico_e_izquierdo():
+    app()
+    page = RehabPage()
+
+    assert page.rehab_side.findData("auto") >= 0
+    page.rehab_side.setCurrentIndex(page.rehab_side.findData("left"))
+
+    assert page.apply_profile_changes()
+    assert page.profile["ejercicios"][page.exercise]["lado"] == "left"
+
+
 def test_rehabilitacion_no_registra_hasta_iniciar(monkeypatch):
     app()
     page = RehabPage()
@@ -125,3 +136,60 @@ def test_rehabilitacion_no_registra_hasta_iniciar(monkeypatch):
     page.toggle_recording()
     page.process_skeleton(frame)
     assert page.sessions[page.exercise].total_frames == 1
+
+
+def test_rehabilitacion_qt_explica_rango_inicial_y_articulaciones_visibles():
+    app()
+    page = RehabPage()
+    confidence = {
+        "right_shoulder": 0.95,
+        "right_elbow": 0.95,
+        "right_wrist": 0.95,
+    }
+    page.toggle_recording()
+    page.process_skeleton(
+        SkeletonFrame(
+            points={
+                "right_shoulder": [1.0, 0.0, 0.0],
+                "right_elbow": [0.0, 0.0, 0.0],
+                "right_wrist": [0.0, 1.0, 0.0],
+            },
+            confidence=confidence,
+            timestamp=0.0,
+            source="prueba",
+        )
+    )
+
+    assert "Ángulo actual: 90.0°" in page.status.text()
+    assert "fuera del objetivo 30°–130°" in page.status.text()
+
+    page.process_skeleton(SkeletonFrame(points={}, confidence=confidence, timestamp=0.1, source="prueba"))
+
+    assert "hombro, codo y muñeca" in page.status.text()
+    assert "Puede realizarse sentado" in page.status.text()
+
+
+def test_rehabilitacion_qt_calibra_una_referencia_inicial_comoda(monkeypatch):
+    app()
+    page = RehabPage()
+    result = RehabAnalysisResult(
+        ejercicio="flexion_codo",
+        estado="FUERA_DEL_RANGO",
+        color="amarillo",
+        angulo_actual=145.0,
+        angulo_minimo=30.0,
+        angulo_maximo=130.0,
+        dentro_rango=False,
+        mensajes=["Postura de reposo."],
+        lado_evaluado="right",
+    )
+    monkeypatch.setattr("puce_mocap.qt_app.evaluar_ejercicio_rehabilitacion", lambda *_args: result)
+    page.toggle_recording()
+
+    for timestamp in (0.0, 0.1, 0.2):
+        page.process_skeleton(SkeletonFrame(points={}, timestamp=timestamp, source="prueba"))
+
+    session = page.sessions[page.exercise]
+    assert session.angulo_referencia_inicio == 145.0
+    assert session.fase_actual == "buscando_objetivo"
+    assert "Inicio calibrado en 145.0°" in page.status.text()

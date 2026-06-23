@@ -16,6 +16,7 @@ def test_crear_y_validar_perfil_demo():
     assert validar_perfil_paciente(perfil)
     assert perfil["codigo_paciente"] == "PAC-001"
     assert "flexion_codo" in perfil["ejercicios"]
+    assert perfil["ejercicios"]["flexion_codo"]["lado"] == "auto"
 
 
 def test_guardar_y_cargar_perfil_demo(tmp_path):
@@ -58,3 +59,14 @@ def test_cargar_perfil_rechaza_json_invalido(tmp_path):
 
     with pytest.raises(ValueError, match="campo obligatorio"):
         cargar_perfil_paciente(ruta)
+
+
+def test_perfil_acepta_seleccion_automatica_de_extremidad():
+    from puce_mocap.rehab_profiles import normalizar_perfil_paciente
+
+    perfil = crear_perfil_demo()
+    perfil["ejercicios"]["flexion_codo"]["lado"] = "automático"
+
+    normalizado = normalizar_perfil_paciente(perfil)
+
+    assert normalizado["ejercicios"]["flexion_codo"]["lado"] == "auto"

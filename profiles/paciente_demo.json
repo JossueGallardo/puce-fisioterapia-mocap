@@ -9,7 +9,7 @@
       "rango_inicio": {"minimo": 160, "maximo": 180},
       "rango_objetivo": {"minimo": 30, "maximo": 130},
       "repeticiones_objetivo": 10,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600
@@ -18,7 +18,7 @@
       "rango_inicio": {"minimo": 0, "maximo": 20},
       "rango_objetivo": {"minimo": 45, "maximo": 100},
       "repeticiones_objetivo": 8,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600
@@ -27,7 +27,7 @@
       "rango_inicio": {"minimo": -10, "maximo": 10},
       "rango_objetivo": {"minimo": 45, "maximo": 90},
       "repeticiones_objetivo": 8,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600
@@ -36,7 +36,7 @@
       "rango_inicio": {"minimo": 80, "maximo": 120},
       "rango_objetivo": {"minimo": 160, "maximo": 180},
       "repeticiones_objetivo": 10,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600
@@ -45,7 +45,7 @@
       "rango_inicio": {"minimo": 0, "maximo": 5},
       "rango_objetivo": {"minimo": 10, "maximo": 25},
       "repeticiones_objetivo": 10,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600
@@ -54,7 +54,7 @@
       "rango_inicio": {"minimo": 0, "maximo": 10},
       "rango_objetivo": {"minimo": 30, "maximo": 60},
       "repeticiones_objetivo": 8,
-      "lado": "right",
+      "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
       "ciclo_minimo_ms": 600

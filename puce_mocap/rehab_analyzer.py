@@ -21,8 +21,47 @@ COLOR_ROJO = "rojo"
 
 MENSAJE_DENTRO_RANGO = "Dentro del rango terapéutico."
 MENSAJE_FUERA_RANGO = "Fuera del rango indicado para este perfil."
-MENSAJE_POSTURA_INCOMPLETA = "No se detecta postura completa."
+MENSAJE_POSTURA_INCOMPLETA = "No se detectan todas las articulaciones necesarias."
 MENSAJE_REVISAR = "Revisar con fisioterapeuta."
+CONFIANZA_MINIMA_ARTICULACION = 0.65
+
+ARTICULACIONES_REQUERIDAS = {
+    "flexion_codo": ("shoulder", "elbow", "wrist"),
+    "abduccion_hombro": ("hip", "shoulder", "elbow"),
+    "rotacion_muneca": ("elbow", "wrist", "index", "pinky"),
+    "extension_rodilla": ("hip", "knee", "ankle"),
+    "dorsiflexion_tobillo": ("knee", "ankle", "foot"),
+    "elevacion_pierna_recta": ("hip", "knee", "ankle"),
+}
+
+NOMBRES_ARTICULACIONES = {
+    "shoulder": "hombro",
+    "elbow": "codo",
+    "wrist": "muñeca",
+    "index": "dedo índice",
+    "pinky": "meñique",
+    "hip": "cadera",
+    "knee": "rodilla",
+    "ankle": "tobillo",
+    "foot": "punta del pie",
+}
+
+EJERCICIOS_COMPATIBLES_SENTADO = {
+    "flexion_codo",
+    "abduccion_hombro",
+    "rotacion_muneca",
+    "extension_rodilla",
+    "dorsiflexion_tobillo",
+}
+
+ORIENTACION_RECOMENDADA = {
+    "flexion_codo": "frontal",
+    "abduccion_hombro": "frontal",
+    "rotacion_muneca": "frontal",
+    "extension_rodilla": "lateral",
+    "dorsiflexion_tobillo": "lateral",
+    "elevacion_pierna_recta": "lateral",
+}
 
 Punto = Sequence[float]
 Esqueleto = Mapping[str, Punto]
@@ -43,6 +82,7 @@ class RehabAnalysisResult:
     fase: str = "transicion"
     forma_correcta: bool | None = None
     repeticion_completada: bool = False
+    lado_evaluado: str | None = None
 
     @property
     def frame_valido(self) -> bool:
@@ -62,6 +102,7 @@ class RehabAnalysisResult:
             "fase": self.fase,
             "forma_correcta": self.forma_correcta,
             "repeticion_completada": self.repeticion_completada,
+            "lado_evaluado": self.lado_evaluado,
         }
 
 
@@ -71,11 +112,13 @@ def _normalizar_clave(nombre: str) -> str:
 
 def _normalizar_lado(lado: str) -> str:
     lado_normalizado = lado.lower().strip()
+    if lado_normalizado in {"auto", "automatico", "automático", "mejor_visible"}:
+        return "auto"
     if lado_normalizado in {"right", "derecho", "derecha", "d"}:
         return "right"
     if lado_normalizado in {"left", "izquierdo", "izquierda", "i"}:
         return "left"
-    raise ValueError("El lado debe ser right/left o derecho/izquierdo.")
+    raise ValueError("El lado debe ser auto, right/left o automático/derecho/izquierdo.")
 
 
 def _indice(esqueleto: Esqueleto) -> dict[str, tuple[str, Punto]]:
@@ -86,6 +129,8 @@ def _convertir_punto(valor: Punto, nombre: str) -> np.ndarray:
     punto = np.asarray(valor, dtype=float)
     if punto.shape not in {(2,), (3,)}:
         raise ValueError(f"{nombre} debe tener 2 o 3 coordenadas.")
+    if not np.all(np.isfinite(punto)):
+        raise ValueError(f"{nombre} contiene coordenadas no válidas.")
     return punto
 
 
@@ -98,7 +143,7 @@ def _punto(indice: Mapping[str, tuple[str, Punto]], *nombres: str) -> np.ndarray
     raise ValueError("No se encontró una articulación requerida.")
 
 
-def _punto_lado(indice: Mapping[str, tuple[str, Punto]], lado: str, articulacion: str) -> np.ndarray:
+def _claves_lado(lado: str, articulacion: str) -> tuple[str, ...]:
     alias = {
         "shoulder": ("shoulder", "hombro"),
         "elbow": ("elbow", "codo"),
@@ -113,7 +158,110 @@ def _punto_lado(indice: Mapping[str, tuple[str, Punto]], lado: str, articulacion
     candidatos: list[str] = []
     for base in alias[articulacion]:
         candidatos.extend((f"{lado}_{base}", f"{base}_{lado}"))
-    return _punto(indice, *candidatos)
+    return tuple(candidatos)
+
+
+def _punto_lado(indice: Mapping[str, tuple[str, Punto]], lado: str, articulacion: str) -> np.ndarray:
+    return _punto(indice, *_claves_lado(lado, articulacion))
+
+
+def _mensaje_visibilidad(nombre: str, lado: str, automatico: bool = False) -> str:
+    articulaciones = [NOMBRES_ARTICULACIONES[item] for item in ARTICULACIONES_REQUERIDAS[nombre]]
+    if len(articulaciones) > 1:
+        lista = ", ".join(articulaciones[:-1]) + f" y {articulaciones[-1]}"
+    else:
+        lista = articulaciones[0]
+    lado_texto = (
+        "de al menos una extremidad"
+        if automatico
+        else f"del lado {'derecho' if lado == 'right' else 'izquierdo'}"
+    )
+    sentado = " Puede realizarse sentado." if nombre in EJERCICIOS_COMPATIBLES_SENTADO else ""
+    return f"Mantenga visibles {lista} {lado_texto}.{sentado}"
+
+
+def _articulaciones_disponibles(
+    nombre: str,
+    esqueleto: Esqueleto,
+    lado: str,
+    confianza: Mapping[str, float] | None,
+) -> bool:
+    indice = _indice(esqueleto)
+    usar_confianza = bool(confianza)
+    confianza_normalizada = (
+        {_normalizar_clave(clave): float(valor) for clave, valor in confianza.items()}
+        if usar_confianza and confianza is not None
+        else {}
+    )
+    for articulacion in ARTICULACIONES_REQUERIDAS[nombre]:
+        encontrada = False
+        for candidata in _claves_lado(lado, articulacion):
+            clave = _normalizar_clave(candidata)
+            if clave not in indice:
+                continue
+            nombre_original, valor = indice[clave]
+            try:
+                _convertir_punto(valor, nombre_original)
+            except ValueError:
+                continue
+            if usar_confianza and confianza_normalizada.get(clave, 0.0) < CONFIANZA_MINIMA_ARTICULACION:
+                continue
+            encontrada = True
+            break
+        if not encontrada:
+            return False
+    return True
+
+
+def _confianza_lado(
+    nombre: str,
+    esqueleto: Esqueleto,
+    lado: str,
+    confianza: Mapping[str, float] | None,
+) -> float:
+    if not _articulaciones_disponibles(nombre, esqueleto, lado, confianza):
+        return -1.0
+    if not confianza:
+        return 1.0
+    confianza_normalizada = {_normalizar_clave(clave): float(valor) for clave, valor in confianza.items()}
+    valores = []
+    for articulacion in ARTICULACIONES_REQUERIDAS[nombre]:
+        valores.append(
+            max(
+                confianza_normalizada.get(_normalizar_clave(clave), 0.0)
+                for clave in _claves_lado(lado, articulacion)
+            )
+        )
+    return float(min(valores))
+
+
+def resolver_lado_ejercicio(
+    nombre_ejercicio: str,
+    esqueleto: Esqueleto,
+    lado_configurado: str,
+    confianza: Mapping[str, float] | None = None,
+    lado_preferido: str | None = None,
+) -> str:
+    """Resuelve la extremidad mejor visible sin exigir una vista lateral."""
+    nombre = _normalizar_clave(nombre_ejercicio)
+    configurado = _normalizar_lado(lado_configurado)
+    if configurado != "auto":
+        return configurado
+
+    puntuaciones = {
+        lado: _confianza_lado(nombre, esqueleto, lado, confianza)
+        for lado in ("right", "left")
+    }
+    preferido = _normalizar_lado(lado_preferido) if lado_preferido else None
+    if preferido in {"right", "left"} and puntuaciones[preferido] >= CONFIANZA_MINIMA_ARTICULACION:
+        if nombre == "rotacion_muneca":
+            return preferido
+        otro = "left" if preferido == "right" else "right"
+        if puntuaciones[otro] < puntuaciones[preferido] + 0.15:
+            return preferido
+    if puntuaciones["left"] > puntuaciones["right"]:
+        return "left"
+    return "right"
 
 
 def _vertical_abajo(punto: np.ndarray) -> np.ndarray:
@@ -218,6 +366,8 @@ def evaluar_ejercicio_rehabilitacion(
     esqueleto: Esqueleto,
     perfil: Mapping[str, Any],
     calibrador_muneca: WristRotationCalibrator | None = None,
+    confianza: Mapping[str, float] | None = None,
+    lado_preferido: str | None = None,
 ) -> RehabAnalysisResult:
     """Evalúa un ejercicio usando el rango configurado en el perfil."""
     nombre = _normalizar_clave(nombre_ejercicio)
@@ -243,7 +393,27 @@ def evaluar_ejercicio_rehabilitacion(
         rango_inicio = {"minimo": inicio_min, "maximo": inicio_max}
     minimo = float(rango_objetivo["minimo"])
     maximo = float(rango_objetivo["maximo"])
-    lado = _normalizar_lado(str(configuracion.get("lado", "right")))
+    lado_configurado = _normalizar_lado(str(configuracion.get("lado", "auto")))
+    lado = resolver_lado_ejercicio(
+        nombre,
+        esqueleto,
+        lado_configurado,
+        confianza,
+        lado_preferido,
+    )
+
+    if not _articulaciones_disponibles(nombre, esqueleto, lado, confianza):
+        return RehabAnalysisResult(
+            ejercicio=nombre,
+            estado=ESTADO_POSTURA_INCOMPLETA,
+            color=COLOR_ROJO,
+            angulo_actual=None,
+            angulo_minimo=minimo,
+            angulo_maximo=maximo,
+            dentro_rango=False,
+            mensajes=[_mensaje_visibilidad(nombre, lado, automatico=lado_configurado == "auto")],
+            lado_evaluado=None if lado_configurado == "auto" else lado,
+        )
 
     try:
         angulo_actual, mensajes_adicionales = _calcular_angulo_ejercicio(
@@ -258,7 +428,8 @@ def evaluar_ejercicio_rehabilitacion(
             angulo_minimo=minimo,
             angulo_maximo=maximo,
             dentro_rango=False,
-            mensajes=[MENSAJE_POSTURA_INCOMPLETA],
+            mensajes=[_mensaje_visibilidad(nombre, lado)],
+            lado_evaluado=lado,
         )
 
     dentro_rango = minimo <= angulo_actual <= maximo
@@ -291,4 +462,5 @@ def evaluar_ejercicio_rehabilitacion(
         mensajes=mensajes,
         fase=fase,
         forma_correcta=forma_correcta,
+        lado_evaluado=lado,
     )

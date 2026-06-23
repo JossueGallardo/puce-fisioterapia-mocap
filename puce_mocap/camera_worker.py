@@ -115,7 +115,12 @@ class CameraPoseWorker(QThread):
                     world_landmarks = result.pose_world_landmarks.landmark if result.pose_world_landmarks else None
                     if image_landmarks is not None and world_landmarks is not None:
                         for index, name in enumerate(MEDIAPIPE_BODY_LANDMARKS):
-                            visibility = float(getattr(image_landmarks[index], "visibility", 1.0))
+                            image_landmark = image_landmarks[index]
+                            inside_frame = (
+                                -0.02 <= float(image_landmark.x) <= 1.02
+                                and -0.02 <= float(image_landmark.y) <= 1.02
+                            )
+                            visibility = float(getattr(image_landmark, "visibility", 1.0)) if inside_frame else 0.0
                             confidence[name] = visibility
                             if visibility >= 0.5:
                                 landmark = world_landmarks[index]

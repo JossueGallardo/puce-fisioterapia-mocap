@@ -43,12 +43,20 @@ def test_sesion_acumula_frames_y_cuenta_ciclo_completo():
     assert sesion.repeticiones_estimadas == 1
 
 
-@pytest.mark.parametrize("ejercicio", list(crear_perfil_demo()["ejercicios"]))
-def test_todos_los_ejercicios_arman_tras_deteccion_tardia_y_cuentan(ejercicio):
+@pytest.mark.parametrize(
+    ("ejercicio", "angulo_inicio"),
+    [
+        ("flexion_codo", 145.0),
+        ("abduccion_hombro", 30.0),
+        ("rotacion_muneca", 20.0),
+        ("extension_rodilla", 140.0),
+        ("dorsiflexion_tobillo", 7.0),
+        ("elevacion_pierna_recta", 20.0),
+    ],
+)
+def test_todos_los_ejercicios_calibran_una_postura_comoda_y_cuentan(ejercicio, angulo_inicio):
     config = crear_perfil_demo()["ejercicios"][ejercicio]
-    inicio = config["rango_inicio"]
     objetivo = config["rango_objetivo"]
-    angulo_inicio = (inicio["minimo"] + inicio["maximo"]) / 2
     angulo_objetivo = (objetivo["minimo"] + objetivo["maximo"]) / 2
     sesion = RehabSession(ejercicio, "PAC-001", config)
 
@@ -60,7 +68,7 @@ def test_todos_los_ejercicios_arman_tras_deteccion_tardia_y_cuentan(ejercicio):
         objetivo["minimo"],
         objetivo["maximo"],
         False,
-        ["No se detecta postura completa."],
+        ["No se detectan todas las articulaciones necesarias."],
     )
     inicio_resultado = RehabAnalysisResult(
         ejercicio,
@@ -87,13 +95,73 @@ def test_todos_los_ejercicios_arman_tras_deteccion_tardia_y_cuentan(ejercicio):
 
     for timestamp in (0.0, 0.2, 0.4):
         sesion.registrar_resultado(incompleto, timestamp)
-    sesion.registrar_resultado(inicio_resultado, 0.6)
+    for timestamp in (0.6, 0.8, 1.0):
+        sesion.registrar_resultado(inicio_resultado, timestamp)
     for index in range(12):
-        sesion.registrar_resultado(objetivo_resultado, 0.8 + index * 0.1)
+        sesion.registrar_resultado(objetivo_resultado, 1.2 + index * 0.1)
     for index in range(14):
-        sesion.registrar_resultado(inicio_resultado, 2.0 + index * 0.1)
+        sesion.registrar_resultado(inicio_resultado, 2.4 + index * 0.1)
 
     assert sesion.repeticiones_estimadas == 1
+    assert sesion.angulo_referencia_inicio == pytest.approx(angulo_inicio)
+    assert sesion.rango_inicio_calibrado is not None
+    assert sesion.rango_inicio_calibrado.contiene(angulo_inicio)
+
+
+def test_calibracion_no_usa_fotogramas_separados_por_perdida_de_camara():
+    sesion = RehabSession("flexion_codo", "PAC-001")
+    inicio = RehabAnalysisResult(
+        "flexion_codo",
+        "FUERA_DEL_RANGO",
+        "amarillo",
+        145.0,
+        30.0,
+        130.0,
+        False,
+        ["Postura de reposo."],
+    )
+    incompleto = evaluar_ejercicio_rehabilitacion("flexion_codo", {}, crear_perfil_demo())
+
+    sesion.registrar_resultado(inicio, 0.0)
+    sesion.registrar_resultado(inicio, 0.1)
+    sesion.registrar_resultado(incompleto, 0.2)
+    sesion.registrar_resultado(inicio, 0.3)
+
+    assert sesion.angulo_referencia_inicio is None
+    assert sesion.fase_actual == "calibrando_inicio"
+
+
+def test_calibracion_no_toma_como_inicio_una_postura_dentro_del_objetivo():
+    sesion = RehabSession("flexion_codo", "PAC-001")
+    objetivo = resultado(True)
+
+    for timestamp in (0.0, 0.1, 0.2, 0.3):
+        sesion.registrar_resultado(objetivo, timestamp)
+
+    assert sesion.angulo_referencia_inicio is None
+    assert sesion.estado_calibracion == "en_objetivo"
+
+
+def test_sesion_no_cuenta_retorno_aislado_al_perder_la_camara():
+    sesion = RehabSession("flexion_codo", "PAC-001")
+    inicio = resultado(False)
+    objetivo = resultado(True)
+    incompleto = evaluar_ejercicio_rehabilitacion("flexion_codo", {}, crear_perfil_demo())
+
+    timestamp = 0.0
+    for _ in range(3):
+        sesion.registrar_resultado(inicio, timestamp)
+        timestamp += 0.1
+    for _ in range(12):
+        sesion.registrar_resultado(objetivo, timestamp)
+        timestamp += 0.1
+    sesion.registrar_resultado(inicio, timestamp)
+    sesion.registrar_resultado(incompleto, timestamp + 0.1)
+    sesion.registrar_resultado(inicio, timestamp + 0.2)
+    sesion.registrar_resultado(objetivo, timestamp + 0.3)
+
+    assert sesion.repeticiones_estimadas == 0
+    assert sesion.fase_actual == "regresando_inicio"
 
 
 def test_sesion_exporta_resumen():

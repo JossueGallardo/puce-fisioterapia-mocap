@@ -8,6 +8,7 @@ import math
 
 
 class MovementPhase(str, Enum):
+    CALIBRANDO_INICIO = "calibrando_inicio"
     ESPERANDO_INICIO = "esperando_inicio"
     BUSCANDO_OBJETIVO = "buscando_objetivo"
     REGRESANDO_INICIO = "regresando_inicio"
@@ -82,6 +83,20 @@ class RepetitionTracker:
     def filtered_angle(self) -> float | None:
         return self._filtered_angle
 
+    def arm_from_start(self, angle: float, timestamp: float) -> MovementUpdate:
+        """Arma el ciclo tras una calibración inicial estable ya confirmada."""
+        angle = float(angle)
+        if not math.isfinite(angle) or not self.definition.start_range.contiene(
+            angle, self.definition.hysteresis_deg
+        ):
+            raise ValueError("El ángulo calibrado no pertenece al rango inicial activo.")
+        self._filtered_angle = angle
+        self._last_valid_at = float(timestamp)
+        self._cycle_started_at = float(timestamp)
+        self._clear_candidate()
+        self.state = MovementPhase.BUSCANDO_OBJETIVO
+        return self._result(MovementPhase.INICIO)
+
     def reset(self, keep_repetitions: bool = False) -> None:
         self.state = MovementPhase.ESPERANDO_INICIO
         if not keep_repetitions:
@@ -121,22 +136,19 @@ class RepetitionTracker:
         completed = False
 
         if self.state == MovementPhase.ESPERANDO_INICIO:
-            # Armar el ciclo no suma una repetición. Hacerlo en el primer
-            # fotograma inicial válido evita que el ruido o una detección tardía
-            # impidan comenzar; objetivo y retorno sí conservan la permanencia.
-            if eligible and phase == MovementPhase.INICIO:
-                self._clear_candidate()
+            # La postura inicial también requiere permanencia. Esto evita armar
+            # un ciclo con una estimación aislada cuando la persona entra o sale
+            # del encuadre.
+            if eligible and self._confirmed(MovementPhase.INICIO, phase, timestamp):
                 self.state = MovementPhase.BUSCANDO_OBJETIVO
                 self._cycle_started_at = timestamp
         elif self.state == MovementPhase.BUSCANDO_OBJETIVO:
             if eligible and self._confirmed(MovementPhase.OBJETIVO, phase, timestamp):
                 self.state = MovementPhase.REGRESANDO_INICIO
         elif self.state == MovementPhase.REGRESANDO_INICIO:
-            # El retorno cierra el ciclo al cruzar el rango inicial. Usar el
-            # valor crudo evita el retraso del EMA y permite enlazar la próxima
-            # repetición sin tener que mantener la postura final.
-            if eligible and raw_phase == MovementPhase.INICIO:
-                self._clear_candidate()
+            # El retorno usa el ángulo crudo para no arrastrar el EMA, pero debe
+            # permanecer en el rango inicial antes de cerrar el ciclo.
+            if eligible and self._confirmed(MovementPhase.INICIO, raw_phase, timestamp):
                 cycle_time = timestamp - (self._cycle_started_at if self._cycle_started_at is not None else timestamp)
                 if cycle_time >= self.definition.min_cycle_seconds:
                     self.repetitions += 1

@@ -25,7 +25,12 @@ from puce_mocap.gait_analyzer import analizar_marcha
 from puce_mocap.gait_session import GaitSession
 from puce_mocap.gait_temporal import GaitCycleAnalyzer
 from puce_mocap.movement import AngleRange, MovementDefinition
-from puce_mocap.rehab_analyzer import WristRotationCalibrator, evaluar_ejercicio_rehabilitacion
+from puce_mocap.rehab_analyzer import (
+    ORIENTACION_RECOMENDADA,
+    WristRotationCalibrator,
+    evaluar_ejercicio_rehabilitacion,
+    resolver_lado_ejercicio,
+)
 from puce_mocap.rehab_profiles import (
     EJERCICIOS_REHABILITACION,
     crear_perfil_demo,
@@ -53,6 +58,7 @@ REHAB_LABELS = {
     "elevacion_pierna_recta": "Elevación de pierna recta",
 }
 PHASE_LABELS = {
+    "calibrando_inicio": "Calibrando inicio",
     "esperando_inicio": "Esperando postura inicial",
     "buscando_objetivo": "Buscando objetivo",
     "regresando_inicio": "Regresando al inicio",
@@ -135,6 +141,8 @@ class PuceWebController:
         self.rehab_dirty = False
         self.rehab_calibrator = WristRotationCalibrator()
         self.latest_points: Mapping[str, Any] = {}
+        self.latest_confidence: Mapping[str, float] = {}
+        self.rehab_evaluated_side: str | None = None
         self._rebuild_rehab_sessions()
 
         self.gait_session = GaitSession()
@@ -157,7 +165,14 @@ class PuceWebController:
             "disclaimer": DISCLAIMER,
             "modules": [{"key": key, "label": label} for key, label in MODULES.items()],
             "weight_exercises": list(WEIGHT_EXERCISES),
-            "rehab_exercises": [{"key": key, "label": REHAB_LABELS[key]} for key in EJERCICIOS_REHABILITACION],
+            "rehab_exercises": [
+                {
+                    "key": key,
+                    "label": REHAB_LABELS[key],
+                    "orientation": ORIENTACION_RECOMENDADA[key],
+                }
+                for key in EJERCICIOS_REHABILITACION
+            ],
             "local_only": False,
             "deployment": {
                 "browser_camera": True,
@@ -359,6 +374,8 @@ class PuceWebController:
             if isinstance(exercise, str) and exercise:
                 if exercise not in EJERCICIOS_REHABILITACION:
                     raise WebActionError("Ejercicio de rehabilitación no válido.")
+                if exercise != self.rehab_exercise:
+                    self.rehab_evaluated_side = None
                 self.rehab_exercise = exercise
             if self.rehab_recording:
                 raise WebActionError("Pause el ejercicio antes de cambiar el perfil o los rangos.")
@@ -383,7 +400,7 @@ class PuceWebController:
                 config["repeticiones_objetivo"] = _as_int(
                     config_payload.get("repeticiones_objetivo"), "repeticiones_objetivo"
                 )
-                config["lado"] = str(config_payload.get("lado", config.get("lado", "right")))
+                config["lado"] = str(config_payload.get("lado", config.get("lado", "auto")))
                 profile["ejercicios"][self.rehab_exercise] = config
             normalized = normalizar_perfil_paciente(profile)
             if normalized != self.rehab_profile:
@@ -392,6 +409,7 @@ class PuceWebController:
                 self.rehab_profile = normalized
                 self._rebuild_rehab_sessions()
                 self.rehab_calibrator = WristRotationCalibrator()
+                self.rehab_evaluated_side = None
             self.status = "Perfil y rangos aplicados correctamente."
 
     def start_rehab(self, payload: Mapping[str, Any] | None = None) -> None:
@@ -401,7 +419,11 @@ class PuceWebController:
             if self.rehab_exercise == "rotacion_muneca" and not self.rehab_calibrator.calibrado:
                 raise WebActionError("Calibre primero la posición neutral de la muñeca.")
             self.rehab_recording = True
-            self.status = "Ejercicio iniciado. Complete inicio -> objetivo -> inicio."
+            session = self.rehab_sessions[self.rehab_exercise]
+            if session.angulo_referencia_inicio is None:
+                self.status = "Mantenga una postura inicial cómoda y estable durante un momento."
+            else:
+                self.status = f"Continuando con referencia inicial de {session.angulo_referencia_inicio:.1f}°."
 
     def pause_rehab(self) -> None:
         with self._lock:
@@ -411,6 +433,7 @@ class PuceWebController:
     def reset_rehab(self) -> None:
         with self._lock:
             self.rehab_sessions[self.rehab_exercise].reiniciar()
+            self.rehab_evaluated_side = None
             self.rehab_recording = False
             self.status = "Ejercicio reiniciado."
             self._set_default_metrics()
@@ -418,11 +441,20 @@ class PuceWebController:
     def calibrate_wrist(self) -> None:
         with self._lock:
             try:
-                side = self.rehab_profile["ejercicios"]["rotacion_muneca"].get("lado", "right")
+                configured = self.rehab_profile["ejercicios"]["rotacion_muneca"].get("lado", "auto")
+                side = resolver_lado_ejercicio(
+                    "rotacion_muneca",
+                    self.latest_points,
+                    configured,
+                    self.latest_confidence,
+                    self.rehab_evaluated_side,
+                )
                 self.rehab_calibrator.calibrar(self.latest_points, side)
+                self.rehab_evaluated_side = side
             except ValueError as exc:
                 raise WebActionError(str(exc)) from exc
-            self.status = "Calibración neutral de muñeca completada."
+            side_text = "derecha" if side == "right" else "izquierda"
+            self.status = f"Calibración neutral de muñeca completada en la extremidad {side_text}."
 
     def load_rehab_profile_json(self, content: bytes) -> None:
         try:
@@ -436,6 +468,7 @@ class PuceWebController:
             self.rehab_dirty = False
             self.rehab_recording = False
             self.rehab_calibrator = WristRotationCalibrator()
+            self.rehab_evaluated_side = None
             self._rebuild_rehab_sessions()
             self.status = "Perfil cargado desde el dispositivo."
 
@@ -465,6 +498,7 @@ class PuceWebController:
             self.rehab_dirty = False
             self.rehab_recording = False
             self.rehab_session_id = uuid4().hex
+            self.rehab_evaluated_side = None
             self._rebuild_rehab_sessions()
             self.status = f"Reporte guardado en {path}."
 
@@ -559,26 +593,81 @@ class PuceWebController:
 
     def _process_rehab_locked(self, frame: SkeletonFrame) -> None:
         self.latest_points = frame.points
+        self.latest_confidence = frame.confidence
         result = evaluar_ejercicio_rehabilitacion(
             self.rehab_exercise,
             frame.points,
             self.rehab_profile,
             self.rehab_calibrator if self.rehab_exercise == "rotacion_muneca" else None,
+            frame.confidence,
+            self.rehab_evaluated_side,
         )
+        if result.frame_valido and result.lado_evaluado is not None:
+            self.rehab_evaluated_side = result.lado_evaluado
         session = self.rehab_sessions[self.rehab_exercise]
         session.fuente_datos = frame.source
         if self.rehab_recording:
             result = session.registrar_resultado(result, frame.timestamp)
-            self.rehab_dirty = True
+            if result.frame_valido:
+                self.rehab_dirty = True
         self.metrics = [
             {"label": "Ángulo", "value": "N/D" if result.angulo_actual is None else f"{result.angulo_actual:.1f}°"},
             {"label": "Fase", "value": _phase_text(session.fase_actual) if self.rehab_recording else "En espera"},
             {"label": "Repeticiones", "value": str(session.repeticiones_estimadas)},
             {"label": "En rango", "value": "Sí" if result.dentro_rango else "No"},
         ]
+        side_text = "derecha" if result.lado_evaluado == "right" else "izquierda"
+        orientation = ORIENTACION_RECOMENDADA[self.rehab_exercise]
+        orientation_text = "cámara frontal" if orientation == "frontal" else "cámara lateral u oblicua"
         if self.rehab_recording:
             if not result.frame_valido:
-                self.status = "No se detecta el esqueleto completo. Mantenga visible la articulación evaluada."
+                self.status = result.mensajes[0]
+            elif session.angulo_referencia_inicio is None:
+                target = self.rehab_profile["ejercicios"][self.rehab_exercise]["rango_objetivo"]
+                if session.estado_calibracion == "en_objetivo":
+                    self.status = (
+                        f"Ángulo actual: {result.angulo_actual:.1f}°. "
+                        f"Adopte una postura de reposo fuera del objetivo "
+                        f"{target['minimo']:.0f}°–{target['maximo']:.0f}° y manténgala."
+                    )
+                elif session.estado_calibracion == "forma_incorrecta":
+                    self.status = (
+                        result.mensajes[-1]
+                        if result.mensajes
+                        else "Corrija la postura antes de calibrar el inicio."
+                    )
+                elif session.estado_calibracion == "inestable":
+                    self.status = (
+                        f"Ángulo actual: {result.angulo_actual:.1f}°. "
+                        "Mantenga la postura quieta para calibrar el inicio."
+                    )
+                else:
+                    self.status = (
+                        f"Extremidad {side_text}; {orientation_text}. "
+                        f"Mantenga esta postura cómoda y estable. Ángulo actual: {result.angulo_actual:.1f}°."
+                    )
+            elif session.fase_actual == "esperando_inicio":
+                start = session.rango_inicio_calibrado
+                assert start is not None
+                self.status = (
+                    f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
+                    f"Regrese a {start.minimo:.0f}°–{start.maximo:.0f}° para rearmar el ciclo."
+                )
+            elif session.fase_actual == "buscando_objetivo":
+                target = self.rehab_profile["ejercicios"][self.rehab_exercise]["rango_objetivo"]
+                self.status = (
+                    f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
+                    f"Alcance el rango objetivo "
+                    f"{target['minimo']:.0f}°–{target['maximo']:.0f}°."
+                )
+            elif session.fase_actual == "regresando_inicio":
+                start = session.rango_inicio_calibrado
+                assert start is not None
+                self.status = (
+                    f"Objetivo alcanzado. Regrese cerca de la referencia "
+                    f"{session.angulo_referencia_inicio:.1f}° "
+                    f"({start.minimo:.0f}°–{start.maximo:.0f}°) y mantenga la postura."
+                )
             else:
                 self.status = result.mensajes[0] if result.mensajes else DISCLAIMER
         elif result.mensajes:
@@ -692,6 +781,9 @@ class PuceWebController:
             "recording": self.rehab_recording,
             "profile": deepcopy(self.rehab_profile),
             "calibrated_wrist": self.rehab_calibrator.calibrado,
+            "evaluated_side": self.rehab_evaluated_side,
+            "start_reference": self.rehab_sessions[self.rehab_exercise].angulo_referencia_inicio,
+            "calibration_status": self.rehab_sessions[self.rehab_exercise].estado_calibracion,
             "repetitions": self.rehab_sessions[self.rehab_exercise].repeticiones_estimadas,
         }
 

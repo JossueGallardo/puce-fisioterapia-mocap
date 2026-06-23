@@ -161,10 +161,27 @@ function updateAnalysisContext(state) {
     }
   } else if (state.module === "rehab") {
     const exercise = appInfo.rehab_exercises.find((item) => item.key === state.rehab.exercise);
-    const side = state.rehab.profile.ejercicios[state.rehab.exercise].lado === "left" ? "izquierdo" : "derecho";
-    badge = `Rehabilitación · ${exercise ? exercise.label : state.rehab.exercise} · lado ${side}`;
-    guideMode = "frontal";
-    guideLabel = `Mantenga visible el lado ${side}`;
+    const configuredSide = state.rehab.profile.ejercicios[state.rehab.exercise].lado;
+    const evaluatedSide = state.rehab.evaluated_side;
+    const side = evaluatedSide === "left"
+      ? "izquierda"
+      : evaluatedSide === "right"
+        ? "derecha"
+        : configuredSide === "left"
+          ? "izquierda"
+          : configuredSide === "right"
+            ? "derecha"
+            : "automática";
+    badge = `Rehabilitación · ${exercise ? exercise.label : state.rehab.exercise} · extremidad ${side}`;
+    const frontal = exercise?.orientation !== "lateral";
+    guideMode = frontal ? "frontal" : "lateral";
+    guideLabel = frontal
+      ? "Mire de frente y mantenga visible la extremidad evaluada"
+      : "Use una vista lateral u oblicua sin ocultar la extremidad evaluada";
+    $("rehab-guidance").textContent = frontal
+      ? "Colóquese de frente a la cámara. El selector indica la extremidad analizada, no la orientación corporal."
+      : "Coloque la cámara de lado u oblicua para medir mejor la articulación. Puede elegir cualquiera de las dos extremidades.";
+    $("rehab-calibrate").hidden = state.rehab.exercise !== "rotacion_muneca";
   } else {
     const frontal = state.gait.view === "Frontal";
     badge = `Caminadora · vista ${frontal ? "frontal" : "lateral"}`;
@@ -214,7 +231,10 @@ function drawPose(visualization) {
     context.stroke();
   });
 
-  const selectedSide = selectedModule === "rehab" ? $("rehab-side").value : null;
+  const configuredSide = selectedModule === "rehab" ? $("rehab-side").value : null;
+  const selectedSide = configuredSide === "auto"
+    ? currentState?.rehab.evaluated_side || null
+    : configuredSide;
   visualization.landmarks.forEach((landmark, index) => {
     if (landmark.visibility < 0.5) return;
     const isLeft = index >= 11 && index % 2 === 1;
@@ -332,6 +352,11 @@ async function run(path, payload = undefined, forceHydrate = false) {
   try {
     renderState(await jsonRequest(path, payload), forceHydrate);
   } catch (error) {
+    try {
+      renderState(await fetchState(), true);
+    } catch (_stateError) {
+      // Se conserva el error original de la acción.
+    }
     setStatus(error.message, "error");
   }
 }

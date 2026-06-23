@@ -47,7 +47,12 @@ from puce_mocap.freemocap_session import FreeMoCapSessionProvider
 from puce_mocap.gait_analyzer import analizar_marcha
 from puce_mocap.gait_session import GaitSession
 from puce_mocap.gait_temporal import GaitCycleAnalyzer
-from puce_mocap.rehab_analyzer import WristRotationCalibrator, evaluar_ejercicio_rehabilitacion
+from puce_mocap.rehab_analyzer import (
+    ORIENTACION_RECOMENDADA,
+    WristRotationCalibrator,
+    evaluar_ejercicio_rehabilitacion,
+    resolver_lado_ejercicio,
+)
 from puce_mocap.movement import AngleRange, MovementDefinition
 from puce_mocap.rehab_profiles import (
     cargar_perfil_paciente,
@@ -73,6 +78,7 @@ REHAB_LABELS = {
     "elevacion_pierna_recta": "Elevación de pierna recta",
 }
 PHASE_LABELS = {
+    "calibrando_inicio": "Calibrando inicio",
     "esperando_inicio": "Esperando postura inicial",
     "buscando_objetivo": "Buscando objetivo",
     "regresando_inicio": "Regresando al inicio",
@@ -586,8 +592,8 @@ class WeightsPage(AnalysisPage):
             return
         self.recording = True
         self.start_button.setText("Pausar ejercicio")
-        self.metric_1.setText("Esperando postura inicial")
-        self.status.setText("Ejercicio iniciado. Complete inicio → objetivo → inicio.")
+        self.metric_1.setText("Calibrando inicio")
+        self.status.setText("Mantenga una postura inicial cómoda y estable durante un momento.")
 
     def reset_current(self) -> None:
         self.sessions[self.exercise].reiniciar()
@@ -665,6 +671,8 @@ class RehabPage(AnalysisPage):
         self.dirty = False
         self.recording = False
         self.latest_points = {}
+        self.latest_confidence = {}
+        self.rehab_evaluated_side: str | None = None
 
         patient_box, patient_layout = _card("Datos del paciente para el reporte")
         patient_grid = QGridLayout()
@@ -705,21 +713,28 @@ class RehabPage(AnalysisPage):
         self.rehab_repetitions = QSpinBox()
         self.rehab_repetitions.setRange(1, 1000)
         self.rehab_side = QComboBox()
+        self.rehab_side.addItem("Automático (mejor visible)", "auto")
         self.rehab_side.addItem("Derecho", "right")
         self.rehab_side.addItem("Izquierdo", "left")
-        config_grid.addWidget(QLabel("Inicio mín."), 0, 0)
+        config_grid.addWidget(QLabel("Inicio guía mín."), 0, 0)
         config_grid.addWidget(self.rehab_start_min, 0, 1)
-        config_grid.addWidget(QLabel("Inicio máx."), 0, 2)
+        config_grid.addWidget(QLabel("Inicio guía máx."), 0, 2)
         config_grid.addWidget(self.rehab_start_max, 0, 3)
         config_grid.addWidget(QLabel("Objetivo mín."), 1, 0)
         config_grid.addWidget(self.rehab_target_min, 1, 1)
         config_grid.addWidget(QLabel("Objetivo máx."), 1, 2)
         config_grid.addWidget(self.rehab_target_max, 1, 3)
-        config_grid.addWidget(QLabel("Lado"), 2, 0)
+        config_grid.addWidget(QLabel("Extremidad evaluada"), 2, 0)
         config_grid.addWidget(self.rehab_side, 2, 1)
         config_grid.addWidget(QLabel("Repeticiones"), 2, 2)
         config_grid.addWidget(self.rehab_repetitions, 2, 3)
         layout.addLayout(config_grid)
+        layout.addWidget(
+            QLabel(
+                "Al iniciar, la postura estable actual se calibra como referencia. "
+                "El rango de inicio del perfil es orientativo."
+            )
+        )
         config_actions = QHBoxLayout()
         apply_config = QPushButton("Aplicar configuración")
         apply_config.clicked.connect(self.apply_profile_changes)
@@ -764,12 +779,13 @@ class RehabPage(AnalysisPage):
         if not self.exercise:
             return
         config = self.profile["ejercicios"][self.exercise]
+        self.rehab_evaluated_side = None
         self.rehab_start_min.setValue(float(config["rango_inicio"]["minimo"]))
         self.rehab_start_max.setValue(float(config["rango_inicio"]["maximo"]))
         self.rehab_target_min.setValue(float(config["rango_objetivo"]["minimo"]))
         self.rehab_target_max.setValue(float(config["rango_objetivo"]["maximo"]))
         self.rehab_repetitions.setValue(int(config["repeticiones_objetivo"]))
-        self.rehab_side.setCurrentIndex(max(0, self.rehab_side.findData(config.get("lado", "right"))))
+        self.rehab_side.setCurrentIndex(max(0, self.rehab_side.findData(config.get("lado", "auto"))))
         self.calibrate_button.setVisible(self.exercise == "rotacion_muneca")
         self.recording = False
         self.start_button.setText("Iniciar ejercicio")
@@ -808,6 +824,9 @@ class RehabPage(AnalysisPage):
     def apply_profile_changes(self) -> bool:
         if self.recording:
             self.status.setText("Pause el ejercicio antes de cambiar el perfil o los rangos.")
+            self.rehab_side.setCurrentIndex(
+                max(0, self.rehab_side.findData(self.profile["ejercicios"][self.exercise].get("lado", "auto")))
+            )
             return False
         try:
             updated_profile = self._profile_from_form()
@@ -818,8 +837,12 @@ class RehabPage(AnalysisPage):
             return True
         if self.dirty:
             self.status.setText("Finalice y guarde el reporte antes de cambiar datos de una sesión en curso.")
+            self.rehab_side.setCurrentIndex(
+                max(0, self.rehab_side.findData(self.profile["ejercicios"][self.exercise].get("lado", "auto")))
+            )
             return False
         self.profile = updated_profile
+        self.rehab_evaluated_side = None
         self._rebuild_sessions()
         self.metric_2.setText("0")
         self.status.setText("Perfil y rangos aplicados correctamente.")
@@ -848,6 +871,7 @@ class RehabPage(AnalysisPage):
             self.selector.addItem(REHAB_LABELS[key], key)
         self.selector.blockSignals(False)
         self._load_patient_fields()
+        self.rehab_evaluated_side = None
         self._rebuild_sessions()
         self._load_exercise_config()
         self.status.setText(f"Perfil cargado desde {path}.")
@@ -884,11 +908,17 @@ class RehabPage(AnalysisPage):
             return
         self.recording = True
         self.start_button.setText("Pausar ejercicio")
-        self.metric_1.setText("Esperando postura inicial")
-        self.status.setText("Ejercicio iniciado. Complete inicio → objetivo → inicio.")
+        session = self.sessions[self.exercise]
+        if session.angulo_referencia_inicio is None:
+            self.metric_1.setText("Calibrando inicio")
+            self.status.setText("Mantenga una postura inicial cómoda y estable durante un momento.")
+        else:
+            self.metric_1.setText(_phase_text(session.fase_actual))
+            self.status.setText(f"Continuando con referencia inicial de {session.angulo_referencia_inicio:.1f}°.")
 
     def reset_current(self) -> None:
         self.sessions[self.exercise].reiniciar()
+        self.rehab_evaluated_side = None
         self.recording = False
         self.start_button.setText("Iniciar ejercicio")
         self.metric_1.setText("En espera")
@@ -899,9 +929,18 @@ class RehabPage(AnalysisPage):
         if not self.apply_profile_changes():
             return
         try:
-            lado = self.profile["ejercicios"]["rotacion_muneca"].get("lado", "right")
+            configured = self.profile["ejercicios"]["rotacion_muneca"].get("lado", "auto")
+            lado = resolver_lado_ejercicio(
+                "rotacion_muneca",
+                self.latest_points,
+                configured,
+                self.latest_confidence,
+                self.rehab_evaluated_side,
+            )
             self.calibrator.calibrar(self.latest_points, lado)
-            self.status.setText("Calibración neutral de muñeca completada.")
+            self.rehab_evaluated_side = lado
+            side_text = "derecha" if lado == "right" else "izquierda"
+            self.status.setText(f"Calibración neutral de muñeca completada en la extremidad {side_text}.")
         except ValueError as exc:
             self.status.setText(str(exc))
 
@@ -921,42 +960,81 @@ class RehabPage(AnalysisPage):
         if path is not None:
             self.status.setText(f"Reporte guardado en {path}.")
         self.session_id = uuid4().hex
+        self.rehab_evaluated_side = None
         self._rebuild_sessions()
 
     def process_skeleton(self, frame: SkeletonFrame) -> None:
         self.latest_points = frame.points
+        self.latest_confidence = frame.confidence
         result = evaluar_ejercicio_rehabilitacion(
             self.exercise,
             frame.points,
             self.profile,
             self.calibrator if self.exercise == "rotacion_muneca" else None,
+            frame.confidence,
+            self.rehab_evaluated_side,
         )
+        if result.frame_valido and result.lado_evaluado is not None:
+            self.rehab_evaluated_side = result.lado_evaluado
         session = self.sessions[self.exercise]
         session.fuente_datos = frame.source
         if self.recording:
             result = session.registrar_resultado(result, frame.timestamp)
-            self.dirty = True
+            if result.frame_valido:
+                self.dirty = True
         self.metric_0.setText("N/D" if result.angulo_actual is None else f"{result.angulo_actual:.1f}°")
         self.metric_1.setText(_phase_text(session.fase_actual) if self.recording else "En espera")
         self.metric_2.setText(str(session.repeticiones_estimadas))
         self.metric_3.setText("Sí" if result.dentro_rango else "No")
+        side_text = "derecha" if result.lado_evaluado == "right" else "izquierda"
+        orientation = ORIENTACION_RECOMENDADA[self.exercise]
+        orientation_text = "cámara frontal" if orientation == "frontal" else "cámara lateral u oblicua"
         if self.recording:
             config = self.profile["ejercicios"][self.exercise]
-            start = config["rango_inicio"]
             target = config["rango_objetivo"]
             if not result.frame_valido:
-                self.status.setText("No se detecta el esqueleto completo. Mantenga visible la articulación evaluada.")
+                self.status.setText(result.mensajes[0])
+            elif session.angulo_referencia_inicio is None:
+                if session.estado_calibracion == "en_objetivo":
+                    self.status.setText(
+                        f"Ángulo actual: {result.angulo_actual:.1f}°. "
+                        f"Adopte una postura de reposo fuera del objetivo "
+                        f"{target['minimo']:.0f}°–{target['maximo']:.0f}° y manténgala."
+                    )
+                elif session.estado_calibracion == "forma_incorrecta":
+                    self.status.setText(
+                        result.mensajes[-1] if result.mensajes else "Corrija la postura antes de calibrar el inicio."
+                    )
+                elif session.estado_calibracion == "inestable":
+                    self.status.setText(
+                        f"Ángulo actual: {result.angulo_actual:.1f}°. "
+                        "Mantenga la postura quieta para calibrar el inicio."
+                    )
+                else:
+                    self.status.setText(
+                        f"Extremidad {side_text}; {orientation_text}. "
+                        f"Mantenga esta postura cómoda y estable. Ángulo actual: {result.angulo_actual:.1f}°."
+                    )
             elif session.fase_actual == "esperando_inicio":
+                start = session.rango_inicio_calibrado
+                assert start is not None
                 self.status.setText(
-                    f"Colóquese en el rango inicial: {start['minimo']:.0f}°–{start['maximo']:.0f}°."
+                    f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
+                    f"Regrese a {start.minimo:.0f}°–{start.maximo:.0f}° para rearmar el ciclo."
                 )
             elif session.fase_actual == "buscando_objetivo":
                 self.status.setText(
-                    f"Ciclo iniciado. Alcance el rango objetivo: {target['minimo']:.0f}°–{target['maximo']:.0f}°."
+                    f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
+                    f"Alcance el rango objetivo: "
+                    f"{target['minimo']:.0f}°–{target['maximo']:.0f}°."
                 )
             elif session.fase_actual == "regresando_inicio":
+                start = session.rango_inicio_calibrado
+                assert start is not None
                 self.status.setText(
-                    f"Objetivo alcanzado. Regrese a {start['minimo']:.0f}°–{start['maximo']:.0f}° para contar."
+                    f"Objetivo alcanzado. Regrese cerca de la referencia "
+                    f"{session.angulo_referencia_inicio:.1f}° "
+                    f"({start.minimo:.0f}°–{start.maximo:.0f}°) para contar."
                 )
             else:
                 self.status.setText(result.mensajes[0])

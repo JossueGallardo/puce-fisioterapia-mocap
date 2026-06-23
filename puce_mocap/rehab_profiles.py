@@ -36,7 +36,7 @@ def _config(
     objetivo: tuple[float, float],
     repeticiones: int,
     *,
-    lado: str = "right",
+    lado: str = "auto",
 ) -> dict[str, Any]:
     return {
         "rango_inicio": {"minimo": inicio[0], "maximo": inicio[1]},
@@ -46,6 +46,12 @@ def _config(
         "histeresis_grados": 3.0,
         "permanencia_ms": 200,
         "ciclo_minimo_ms": 600,
+        "calibracion_inicio_automatica": True,
+        "calibracion_inicio_ms": 200,
+        "estabilidad_inicio_grados": 10.0,
+        "tolerancia_retorno_grados": 12.0,
+        "excursion_minima_grados": 5.0,
+        "separacion_fases_grados": 2.0,
     }
 
 
@@ -71,11 +77,13 @@ def _es_numero(valor: Any) -> bool:
 
 
 def _normalizar_lado(lado: str) -> str:
+    if lado in {"auto", "automatico", "automático", "mejor_visible"}:
+        return "auto"
     if lado in {"right", "derecho", "derecha"}:
         return "right"
     if lado in {"left", "izquierdo", "izquierda"}:
         return "left"
-    raise ValueError("El lado configurado debe ser derecho/right o izquierdo/left.")
+    raise ValueError("El lado configurado debe ser automático/auto, derecho/right o izquierdo/left.")
 
 
 def _leer_rango(valor: Any, nombre: str) -> AngleRange:
@@ -141,10 +149,16 @@ def normalizar_perfil_paciente(perfil: Mapping[str, Any]) -> dict[str, Any]:  # 
         repeticiones = configuracion.get("repeticiones_objetivo")
         if not isinstance(repeticiones, int) or isinstance(repeticiones, bool) or repeticiones <= 0:
             raise ValueError(f"repeticiones_objetivo de {nombre} debe ser un entero positivo.")
-        configuracion["lado"] = _normalizar_lado(str(configuracion.get("lado", "right")))
+        configuracion["lado"] = _normalizar_lado(str(configuracion.get("lado", "auto")))
         configuracion.setdefault("histeresis_grados", 3.0)
         configuracion.setdefault("permanencia_ms", 200)
         configuracion.setdefault("ciclo_minimo_ms", 600)
+        configuracion.setdefault("calibracion_inicio_automatica", True)
+        configuracion.setdefault("calibracion_inicio_ms", 200)
+        configuracion.setdefault("estabilidad_inicio_grados", 10.0)
+        configuracion.setdefault("tolerancia_retorno_grados", 12.0)
+        configuracion.setdefault("excursion_minima_grados", 5.0)
+        configuracion.setdefault("separacion_fases_grados", 2.0)
         movimiento_desde_config(configuracion)
         normalizado["ejercicios"][nombre] = configuracion
     return normalizado

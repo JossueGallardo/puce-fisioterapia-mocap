@@ -50,13 +50,45 @@ Las funciones de `puce_mocap/rehab_profiles.py` permiten cargar, guardar, valida
 
 Todos los cálculos reutilizan `puce_mocap.angle_utils.calcular_angulo` o `calcular_angulo_vectores`.
 
+## Encuadre mínimo
+
+No todos los ejercicios requieren el cuerpo entero ni estar de pie. MediaPipe debe detectar con suficiente confianza únicamente estas articulaciones del lado configurado:
+
+| Ejercicio | Articulaciones requeridas | Puede realizarse sentado |
+|---|---|---|
+| Flexión de codo | Hombro, codo y muñeca | Sí |
+| Abducción de hombro | Cadera, hombro y codo | Sí |
+| Rotación de muñeca | Codo, muñeca, índice y meñique | Sí |
+| Extensión de rodilla | Cadera, rodilla y tobillo | Sí |
+| Dorsiflexión de tobillo | Rodilla, tobillo y punta del pie | Sí |
+| Elevación de pierna recta | Cadera, rodilla y tobillo | Depende de la posición indicada por el fisioterapeuta |
+
+Al pulsar `Iniciar ejercicio`, el sistema calibra automáticamente como referencia la primera postura válida, estable y situada fuera del rango objetivo. Debe mantenerse aproximadamente `200 ms`. El retorno de cada repetición se compara con esta referencia medida, no con la coincidencia exacta del rango inicial teórico.
+
+El rango inicial del perfil se conserva como guía y para compatibilidad con perfiles anteriores. Si la persona ya está dentro del rango objetivo al iniciar, la interfaz solicita adoptar primero una postura cómoda de reposo fuera de ese rango. No es necesario alcanzar exactamente valores rígidos como `160°–180°`.
+
+Los fotogramas aislados, las articulaciones fuera del encuadre y las detecciones de baja confianza no calibran el inicio ni completan una repetición.
+
+La opción `Extremidad evaluada` no indica cómo debe orientarse la persona. Sus valores son:
+
+- `Automático`: utiliza la extremidad requerida con mejor visibilidad y conserva la selección mientras ambas tengan una confianza similar.
+- `Derecho`: analiza únicamente la extremidad derecha de la persona.
+- `Izquierdo`: analiza únicamente la extremidad izquierda de la persona.
+
+Orientación recomendada:
+
+- Vista frontal: flexión de codo, abducción de hombro y rotación de muñeca.
+- Vista lateral u oblicua: extensión de rodilla, dorsiflexión de tobillo y elevación de pierna recta.
+
+La previsualización puede estar espejada como un espejo, pero `derecho` e `izquierdo` siempre se refieren al cuerpo de la persona observada.
+
 ## Estados visuales
 
 - Verde: `DENTRO_DEL_RANGO`.
 - Amarillo: `FUERA_DEL_RANGO`.
 - Rojo: `POSTURA_INCOMPLETA`.
 
-Una postura incompleta muestra `No se detecta postura completa.` y no se cuenta como fotograma válido.
+Una postura incompleta indica las articulaciones concretas que deben permanecer visibles y no se cuenta como fotograma válido.
 
 ## Interfaz en vivo
 

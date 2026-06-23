@@ -171,8 +171,9 @@
 
           <div class="context-row">
             <label class="side-control">
-              Lado evaluado
+              Extremidad evaluada
               <select id="rehab-side">
+                <option value="auto">Automático (mejor visible)</option>
                 <option value="right">Derecho</option>
                 <option value="left">Izquierdo</option>
               </select>
@@ -181,6 +182,9 @@
               Repeticiones objetivo
               <input id="rehab-repetitions" type="number" min="1" step="1" />
             </label>
+          </div>
+          <div id="rehab-guidance" class="guidance">
+            Colóquese de frente a la cámara. El selector indica la extremidad analizada, no la orientación corporal.
           </div>
 
           <details class="settings">
@@ -202,11 +206,14 @@
               <div class="range-group">
                 <span>Rango terapéutico</span>
                 <div class="form-grid four">
-                  <label>Inicio mín. <input id="rehab-start-min" type="number" step="0.1" /></label>
-                  <label>Inicio máx. <input id="rehab-start-max" type="number" step="0.1" /></label>
+                  <label>Inicio guía mín. <input id="rehab-start-min" type="number" step="0.1" /></label>
+                  <label>Inicio guía máx. <input id="rehab-start-max" type="number" step="0.1" /></label>
                   <label>Objetivo mín. <input id="rehab-target-min" type="number" step="0.1" /></label>
                   <label>Objetivo máx. <input id="rehab-target-max" type="number" step="0.1" /></label>
                 </div>
+              </div>
+              <div class="guidance">
+                Al iniciar, la postura estable actual se calibra como referencia. El rango de inicio es orientativo.
               </div>
               <button id="rehab-configure" class="button secondary">Aplicar configuración</button>
             </div>

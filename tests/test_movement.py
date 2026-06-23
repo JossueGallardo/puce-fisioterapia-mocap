@@ -34,8 +34,8 @@ def test_cuenta_unicamente_inicio_objetivo_inicio_confirmados():
     )
 
     assert tracker.repetitions == 1
-    assert updates[-2].repetition_completed
-    assert updates[-2].phase == MovementPhase.INICIO
+    assert updates[-1].repetition_completed
+    assert updates[-1].phase == MovementPhase.INICIO
 
 
 def test_oscilar_en_el_umbral_no_cuenta_repeticiones():
@@ -83,18 +83,20 @@ def test_perdida_prolongada_reinicia_ciclo_sin_borrar_conteo():
     assert tracker.state == MovementPhase.BUSCANDO_OBJETIVO
 
 
-def test_primer_frame_inicial_valido_arma_el_ciclo_tras_deteccion_tardia():
+def test_inicio_requiere_permanencia_tras_deteccion_tardia():
     tracker = RepetitionTracker(definition())
     tracker.update(None, 0.0, valid=False)
     tracker.update(None, 0.5, valid=False)
 
-    update = tracker.update(170, 1.0, valid=True)
+    first = tracker.update(170, 1.0, valid=True)
+    confirmed = tracker.update(170, 1.2, valid=True)
 
-    assert update.state == MovementPhase.BUSCANDO_OBJETIVO
-    assert update.repetitions == 0
+    assert first.state == MovementPhase.ESPERANDO_INICIO
+    assert confirmed.state == MovementPhase.BUSCANDO_OBJETIVO
+    assert confirmed.repetitions == 0
 
 
-def test_retorno_cuenta_sin_permanecer_en_la_postura_final():
+def test_retorno_requiere_permanencia_para_evitar_cierre_falso():
     tracker = RepetitionTracker(
         MovementDefinition(
             start_range=AngleRange(0, 20),
@@ -105,15 +107,47 @@ def test_retorno_cuenta_sin_permanecer_en_la_postura_final():
         )
     )
     tracker.update(10, 0.0)
-    tracker.update(70, 0.2)
-    tracker.update(80, 0.4)
+    tracker.update(10, 0.2)
+    tracker.update(70, 0.4)
     tracker.update(80, 0.6)
+    tracker.update(80, 0.8)
 
-    completed = tracker.update(10, 0.8)
-    tracker.update(50, 0.9)
+    transient = tracker.update(10, 1.0)
+    completed = tracker.update(10, 1.2)
 
+    assert not transient.repetition_completed
     assert completed.repetition_completed
     assert tracker.repetitions == 1
+
+
+def test_perdida_de_deteccion_descarta_retorno_transitorio():
+    tracker = RepetitionTracker(definition())
+    feed(
+        tracker,
+        [
+            (0.0, 170, True, None),
+            (0.2, 170, True, None),
+            (0.4, 90, True, True),
+            (0.6, 90, True, True),
+            (0.8, 170, True, None),
+            (0.9, None, False, None),
+            (1.0, 170, True, None),
+            (1.1, 120, True, None),
+        ],
+    )
+
+    assert tracker.state == MovementPhase.REGRESANDO_INICIO
+    assert tracker.repetitions == 0
+
+
+def test_armado_explicito_tras_calibracion_inicial():
+    tracker = RepetitionTracker(definition())
+
+    update = tracker.arm_from_start(170.0, 0.5)
+
+    assert update.state == MovementPhase.BUSCANDO_OBJETIVO
+    assert update.phase == MovementPhase.INICIO
+    assert tracker.filtered_angle == 170.0
 
 
 def test_rechaza_rangos_solapados():

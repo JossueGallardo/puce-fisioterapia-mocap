@@ -5,6 +5,7 @@ pytest.importorskip("fastapi")
 
 from fastapi.testclient import TestClient
 
+from puce_mocap.rehab_analyzer import RehabAnalysisResult
 from puce_mocap.skeleton_frame import SkeletonFrame
 from puce_mocap.web.app import create_app
 from puce_mocap.web.camera_service import BrowserPoseFrame
@@ -67,6 +68,7 @@ def test_web_app_factory_expone_inicio_y_estado():
     assert info["local_only"] is False
     assert info["deployment"]["browser_camera"] is True
     assert info["deployment"]["server_filesystem_paths"] is False
+    assert next(item for item in info["rehab_exercises"] if item["key"] == "flexion_codo")["orientation"] == "frontal"
     assert any(module["key"] == "weights" for module in info["modules"])
     assert state["module"] == "weights"
     assert state["source"]["mode"] == "none"
@@ -193,3 +195,129 @@ def test_web_perfil_y_reporte_se_descargan_sin_rutas_del_servidor(monkeypatch, t
     assert downloaded_profile.headers["content-disposition"].endswith('"perfil_rehabilitacion.json"')
     assert downloaded_report.status_code == 200
     assert "attachment; filename=\"pesas_v2.csv\"" in downloaded_report.headers["content-disposition"]
+
+
+def test_web_rehabilitacion_explica_inicio_y_no_exige_cuerpo_entero():
+    controller = PuceWebController()
+    confidence = {
+        "right_shoulder": 0.95,
+        "right_elbow": 0.95,
+        "right_wrist": 0.95,
+    }
+    controller.set_module("rehab")
+    controller.start_rehab({})
+    controller.process_skeleton(
+        SkeletonFrame(codo_90(), confidence=confidence, timestamp=0.0, source="prueba")
+    )
+
+    assert "Ángulo actual: 90.0°" in controller.snapshot()["status"]
+    assert "fuera del objetivo 30°–130°" in controller.snapshot()["status"]
+
+    controller.process_skeleton(SkeletonFrame({}, confidence=confidence, timestamp=0.1, source="prueba"))
+    status = controller.snapshot()["status"]
+
+    assert "hombro, codo y muñeca" in status
+    assert "Puede realizarse sentado" in status
+    controller.close()
+
+
+def test_web_rehabilitacion_cambia_a_izquierda_y_auto_elige_mejor_visible():
+    controller = PuceWebController()
+    controller.set_module("rehab")
+    base_config = {
+        "rango_inicio": {"minimo": 160, "maximo": 180},
+        "rango_objetivo": {"minimo": 30, "maximo": 130},
+        "repeticiones_objetivo": 10,
+    }
+    controller.configure_rehab(
+        {
+            "exercise": "flexion_codo",
+            "config": {**base_config, "lado": "left"},
+        }
+    )
+
+    assert controller.snapshot()["rehab"]["profile"]["ejercicios"]["flexion_codo"]["lado"] == "left"
+
+    controller.configure_rehab(
+        {
+            "exercise": "flexion_codo",
+            "config": {**base_config, "lado": "auto"},
+        }
+    )
+    controller.process_skeleton(
+        SkeletonFrame(
+            {
+                "right_shoulder": [-1.0, 0.0, 0.0],
+                "right_elbow": [0.0, 0.0, 0.0],
+                "right_wrist": [1.0, 0.0, 0.0],
+                "left_shoulder": [1.0, 0.0, 0.0],
+                "left_elbow": [0.0, 0.0, 0.0],
+                "left_wrist": [0.0, 1.0, 0.0],
+            },
+            confidence={
+                "right_shoulder": 0.70,
+                "right_elbow": 0.70,
+                "right_wrist": 0.70,
+                "left_shoulder": 0.96,
+                "left_elbow": 0.96,
+                "left_wrist": 0.96,
+            },
+            timestamp=0.0,
+            source="prueba",
+        )
+    )
+
+    assert controller.snapshot()["rehab"]["evaluated_side"] == "left"
+    controller.close()
+
+
+def test_intento_invalido_no_bloquea_cambio_de_extremidad():
+    controller = PuceWebController()
+    controller.set_module("rehab")
+    controller.start_rehab({})
+    controller.process_skeleton(SkeletonFrame({}, timestamp=0.0, source="prueba"))
+    controller.pause_rehab()
+    controller.configure_rehab(
+        {
+            "exercise": "flexion_codo",
+            "config": {
+                "rango_inicio": {"minimo": 160, "maximo": 180},
+                "rango_objetivo": {"minimo": 30, "maximo": 130},
+                "repeticiones_objetivo": 10,
+                "lado": "left",
+            },
+        }
+    )
+
+    assert controller.snapshot()["rehab"]["profile"]["ejercicios"]["flexion_codo"]["lado"] == "left"
+    controller.close()
+
+
+def test_web_calibra_referencia_inicial_sin_exigir_rango_teorico(monkeypatch):
+    controller = PuceWebController()
+    result = RehabAnalysisResult(
+        ejercicio="flexion_codo",
+        estado="FUERA_DEL_RANGO",
+        color="amarillo",
+        angulo_actual=145.0,
+        angulo_minimo=30.0,
+        angulo_maximo=130.0,
+        dentro_rango=False,
+        mensajes=["Postura de reposo."],
+        lado_evaluado="right",
+    )
+    monkeypatch.setattr(
+        "puce_mocap.web.controller.evaluar_ejercicio_rehabilitacion",
+        lambda *_args: result,
+    )
+    controller.set_module("rehab")
+    controller.start_rehab({})
+
+    for timestamp in (0.0, 0.1, 0.2):
+        controller.process_skeleton(SkeletonFrame(points={}, timestamp=timestamp, source="prueba"))
+
+    state = controller.snapshot()
+    assert state["rehab"]["start_reference"] == 145.0
+    assert state["metrics"][1]["value"] == "Buscando objetivo"
+    assert "Inicio calibrado en 145.0°" in state["status"]
+    controller.close()
