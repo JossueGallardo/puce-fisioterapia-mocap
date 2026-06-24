@@ -44,20 +44,21 @@ def test_sesion_acumula_frames_y_cuenta_ciclo_completo():
 
 
 @pytest.mark.parametrize(
-    ("ejercicio", "angulo_inicio"),
+    ("ejercicio", "angulo_inicio", "angulo_objetivo"),
     [
-        ("flexion_codo", 145.0),
-        ("abduccion_hombro", 30.0),
-        ("rotacion_muneca", 20.0),
-        ("extension_rodilla", 140.0),
-        ("dorsiflexion_tobillo", 7.0),
-        ("elevacion_pierna_recta", 20.0),
+        ("flexion_codo", 145.0, 90.0),
+        ("abduccion_hombro", 30.0, 105.0),
+        ("rotacion_muneca", 20.0, 70.0),
+        ("extension_rodilla", 140.0, 170.0),
+        ("dorsiflexion_tobillo", 7.0, 20.0),
+        ("elevacion_pierna_recta", 20.0, 45.0),
     ],
 )
-def test_todos_los_ejercicios_calibran_una_postura_comoda_y_cuentan(ejercicio, angulo_inicio):
+def test_todos_los_ejercicios_calibran_una_postura_comoda_y_cuentan(
+    ejercicio, angulo_inicio, angulo_objetivo
+):
     config = crear_perfil_demo()["ejercicios"][ejercicio]
     objetivo = config["rango_objetivo"]
-    angulo_objetivo = (objetivo["minimo"] + objetivo["maximo"]) / 2
     sesion = RehabSession(ejercicio, "PAC-001", config)
 
     incompleto = RehabAnalysisResult(
@@ -106,6 +107,43 @@ def test_todos_los_ejercicios_calibran_una_postura_comoda_y_cuentan(ejercicio, a
     assert sesion.angulo_referencia_inicio == pytest.approx(angulo_inicio)
     assert sesion.rango_inicio_calibrado is not None
     assert sesion.rango_inicio_calibrado.contiene(angulo_inicio)
+
+
+def test_abduccion_no_cuenta_movimiento_corto_tipo_pendulo():
+    config = crear_perfil_demo()["ejercicios"]["abduccion_hombro"]
+    sesion = RehabSession("abduccion_hombro", "PAC-001", config)
+
+    def muestra(angulo):
+        dentro = config["rango_objetivo"]["minimo"] <= angulo <= config["rango_objetivo"]["maximo"]
+        return RehabAnalysisResult(
+            "abduccion_hombro",
+            "DENTRO_DEL_RANGO" if dentro else "FUERA_DEL_RANGO",
+            "verde" if dentro else "amarillo",
+            angulo,
+            config["rango_objetivo"]["minimo"],
+            config["rango_objetivo"]["maximo"],
+            dentro,
+            ["Muestra simulada."],
+            forma_correcta=True if dentro else None,
+        )
+
+    for timestamp in (0.0, 0.1, 0.2):
+        sesion.registrar_resultado(muestra(20.0), timestamp)
+    for index in range(8):
+        sesion.registrar_resultado(muestra(50.0), 0.4 + index * 0.1)
+    for index in range(8):
+        sesion.registrar_resultado(muestra(20.0), 1.2 + index * 0.1)
+
+    assert sesion.angulo_referencia_inicio == pytest.approx(20.0)
+    assert sesion.rango_objetivo_repeticion.minimo == pytest.approx(100.0)
+    assert sesion.repeticiones_estimadas == 0
+
+    for index in range(12):
+        sesion.registrar_resultado(muestra(115.0), 2.0 + index * 0.1)
+    for index in range(14):
+        sesion.registrar_resultado(muestra(20.0), 3.2 + index * 0.1)
+
+    assert sesion.repeticiones_estimadas == 1
 
 
 def test_calibracion_no_usa_fotogramas_separados_por_perdida_de_camara():

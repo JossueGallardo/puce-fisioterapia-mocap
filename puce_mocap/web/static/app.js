@@ -178,9 +178,13 @@ function updateAnalysisContext(state) {
     guideLabel = frontal
       ? "Mire de frente y mantenga visible la extremidad evaluada"
       : "Use una vista lateral u oblicua sin ocultar la extremidad evaluada";
-    $("rehab-guidance").textContent = frontal
+    const baseGuidance = frontal
       ? "Colóquese de frente a la cámara. El selector indica la extremidad analizada, no la orientación corporal."
       : "Coloque la cámara de lado u oblicua para medir mejor la articulación. Puede elegir cualquiera de las dos extremidades.";
+    const excursion = state.rehab.profile.ejercicios[state.rehab.exercise].excursion_minima_grados;
+    $("rehab-guidance").textContent = state.rehab.exercise === "abduccion_hombro"
+      ? `${baseGuidance} Para contar una repetición se exige un recorrido mínimo de ${excursion}° desde el inicio calibrado.`
+      : baseGuidance;
     $("rehab-calibrate").hidden = state.rehab.exercise !== "rotacion_muneca";
   } else {
     const frontal = state.gait.view === "Frontal";

@@ -75,6 +75,11 @@ def test_web_app_factory_expone_inicio_y_estado():
     assert info_response.headers["cache-control"] == "no-store"
     assert "camera=(self)" in info_response.headers["permissions-policy"]
 
+    controller = PuceWebController()
+    controller.set_module("rehab")
+    assert controller.snapshot()["metrics"][3]["label"] == "Rango terapéutico"
+    controller.close()
+
 
 def test_web_controller_pesas_registra_y_exporta_reporte(monkeypatch, tmp_path):
     monkeypatch.setenv("PUCE_MOCAP_DATA_DIR", str(tmp_path))
@@ -320,4 +325,46 @@ def test_web_calibra_referencia_inicial_sin_exigir_rango_teorico(monkeypatch):
     assert state["rehab"]["start_reference"] == 145.0
     assert state["metrics"][1]["value"] == "Buscando objetivo"
     assert "Inicio calibrado en 145.0°" in state["status"]
+    controller.close()
+
+
+def test_web_abduccion_informa_umbral_real_de_conteo(monkeypatch):
+    controller = PuceWebController()
+    current_angle = {"value": 20.0}
+
+    def result_for_angle(*_args):
+        angle = current_angle["value"]
+        inside = 100.0 <= angle <= 120.0
+        return RehabAnalysisResult(
+            ejercicio="abduccion_hombro",
+            estado="DENTRO_DEL_RANGO" if inside else "FUERA_DEL_RANGO",
+            color="verde" if inside else "amarillo",
+            angulo_actual=angle,
+            angulo_minimo=100.0,
+            angulo_maximo=120.0,
+            dentro_rango=inside,
+            mensajes=["Muestra simulada."],
+            forma_correcta=True if inside else None,
+            lado_evaluado="right",
+        )
+
+    monkeypatch.setattr(
+        "puce_mocap.web.controller.evaluar_ejercicio_rehabilitacion",
+        result_for_angle,
+    )
+    controller.set_module("rehab")
+    controller.configure_rehab({"exercise": "abduccion_hombro"})
+    controller.start_rehab({})
+    for timestamp in (0.0, 0.1, 0.2):
+        controller.process_skeleton(SkeletonFrame(points={}, timestamp=timestamp, source="prueba"))
+
+    current_angle["value"] = 50.0
+    for index in range(6):
+        controller.process_skeleton(
+            SkeletonFrame(points={}, timestamp=0.4 + index * 0.1, source="prueba")
+        )
+
+    state = controller.snapshot()
+    assert state["rehab"]["repetitions"] == 0
+    assert "Para contar, alcance 100°–120°" in state["status"]
     controller.close()

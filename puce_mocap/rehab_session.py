@@ -182,6 +182,10 @@ class RehabSession:
         return (self.frames_dentro_rango / self.frames_validos) * 100.0
 
     @property
+    def rango_objetivo_repeticion(self) -> AngleRange:
+        return self._tracker.definition.target_range
+
+    @property
     def duracion_segundos(self) -> float:
         return max(0.0, time.monotonic() - self._inicio_monotonic)
 

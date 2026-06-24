@@ -16,12 +16,13 @@
     },
     "abduccion_hombro": {
       "rango_inicio": {"minimo": 0, "maximo": 20},
-      "rango_objetivo": {"minimo": 45, "maximo": 100},
+      "rango_objetivo": {"minimo": 100, "maximo": 120},
       "repeticiones_objetivo": 8,
       "lado": "auto",
       "histeresis_grados": 3.0,
       "permanencia_ms": 200,
-      "ciclo_minimo_ms": 600
+      "ciclo_minimo_ms": 600,
+      "excursion_minima_grados": 70
     },
     "rotacion_muneca": {
       "rango_inicio": {"minimo": -10, "maximo": 10},

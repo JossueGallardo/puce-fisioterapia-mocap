@@ -69,6 +69,14 @@ El rango inicial del perfil se conserva como guía y para compatibilidad con per
 
 Los fotogramas aislados, las articulaciones fuera del encuadre y las detecciones de baja confianza no calibran el inicio ni completan una repetición.
 
+### Abducción de hombro
+
+Estar dentro del rango terapéutico no completa por sí solo una repetición. El perfil demo exige un recorrido mínimo de `70°` desde la referencia inicial calibrada y usa un rango terapéutico de `100°–120°`.
+
+Ejemplo: si la referencia se calibra en `20°`, el contador exige alcanzar al menos `100°` antes de aceptar el regreso. Oscilar entre `20°` y `50°` queda fuera del objetivo y no cuenta como repetición.
+
+Este recorrido mínimo es configurable mediante `excursion_minima_grados` y debe ajustarse bajo supervisión del fisioterapeuta.
+
 La opción `Extremidad evaluada` no indica cómo debe orientarse la persona. Sus valores son:
 
 - `Automático`: utiliza la extremidad requerida con mejor visibilidad y conserva la selección mientras ambas tengan una confianza similar.

@@ -745,7 +745,7 @@ class RehabPage(AnalysisPage):
         layout.addLayout(config_actions)
         self.controls.addWidget(box)
         metrics = QGridLayout()
-        for index, name in enumerate(("Ángulo", "Fase", "Repeticiones", "En rango")):
+        for index, name in enumerate(("Ángulo", "Fase", "Repeticiones", "Rango terapéutico")):
             widget, label = _metric(name)
             setattr(self, f"metric_{index}", label)
             metrics.addWidget(widget, index // 2, index % 2)
@@ -792,7 +792,14 @@ class RehabPage(AnalysisPage):
         self.metric_1.setText("En espera")
         if self.sessions and self.exercise in self.sessions:
             self.metric_2.setText(str(self.sessions[self.exercise].repeticiones_estimadas))
-        self.status.setText("Revise la configuración y pulse «Iniciar ejercicio».")
+        if self.exercise == "abduccion_hombro":
+            excursion = float(config.get("excursion_minima_grados", 70.0))
+            self.status.setText(
+                f"Abducción: se exigirán al menos {excursion:.0f}° de recorrido "
+                "desde el inicio calibrado para contar."
+            )
+        else:
+            self.status.setText("Revise la configuración y pulse «Iniciar ejercicio».")
 
     def _rebuild_sessions(self) -> None:
         self.sessions = {
@@ -1023,10 +1030,11 @@ class RehabPage(AnalysisPage):
                     f"Regrese a {start.minimo:.0f}°–{start.maximo:.0f}° para rearmar el ciclo."
                 )
             elif session.fase_actual == "buscando_objetivo":
+                count_target = session.rango_objetivo_repeticion
                 self.status.setText(
                     f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
-                    f"Alcance el rango objetivo: "
-                    f"{target['minimo']:.0f}°–{target['maximo']:.0f}°."
+                    f"Para contar, alcance {count_target.minimo:.0f}°–{count_target.maximo:.0f}°. "
+                    f"Rango terapéutico: {target['minimo']:.0f}°–{target['maximo']:.0f}°."
                 )
             elif session.fase_actual == "regresando_inicio":
                 start = session.rango_inicio_calibrado

@@ -29,6 +29,14 @@ RANGOS_INICIO_PREDETERMINADOS = {
     "dorsiflexion_tobillo": (0.0, 5.0),
     "elevacion_pierna_recta": (0.0, 10.0),
 }
+EXCURSION_MINIMA_PREDETERMINADA = {
+    "flexion_codo": 5.0,
+    "abduccion_hombro": 70.0,
+    "rotacion_muneca": 5.0,
+    "extension_rodilla": 5.0,
+    "dorsiflexion_tobillo": 5.0,
+    "elevacion_pierna_recta": 5.0,
+}
 
 
 def _config(
@@ -37,6 +45,7 @@ def _config(
     repeticiones: int,
     *,
     lado: str = "auto",
+    excursion_minima: float = 5.0,
 ) -> dict[str, Any]:
     return {
         "rango_inicio": {"minimo": inicio[0], "maximo": inicio[1]},
@@ -50,7 +59,7 @@ def _config(
         "calibracion_inicio_ms": 200,
         "estabilidad_inicio_grados": 10.0,
         "tolerancia_retorno_grados": 12.0,
-        "excursion_minima_grados": 5.0,
+        "excursion_minima_grados": excursion_minima,
         "separacion_fases_grados": 2.0,
     }
 
@@ -63,7 +72,7 @@ PERFIL_DEMO = {
     "observaciones": "Perfil demo sin datos reales",
     "ejercicios": {
         "flexion_codo": _config((160, 180), (30, 130), 10),
-        "abduccion_hombro": _config((0, 20), (45, 100), 8),
+        "abduccion_hombro": _config((0, 20), (100, 120), 8, excursion_minima=70.0),
         "rotacion_muneca": _config((-10, 10), (45, 90), 8),
         "extension_rodilla": _config((80, 120), (160, 180), 10),
         "dorsiflexion_tobillo": _config((0, 5), (10, 25), 10),
@@ -157,7 +166,7 @@ def normalizar_perfil_paciente(perfil: Mapping[str, Any]) -> dict[str, Any]:  # 
         configuracion.setdefault("calibracion_inicio_ms", 200)
         configuracion.setdefault("estabilidad_inicio_grados", 10.0)
         configuracion.setdefault("tolerancia_retorno_grados", 12.0)
-        configuracion.setdefault("excursion_minima_grados", 5.0)
+        configuracion.setdefault("excursion_minima_grados", EXCURSION_MINIMA_PREDETERMINADA[nombre])
         configuracion.setdefault("separacion_fases_grados", 2.0)
         movimiento_desde_config(configuracion)
         normalizado["ejercicios"][nombre] = configuracion

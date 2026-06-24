@@ -17,6 +17,11 @@ def test_crear_y_validar_perfil_demo():
     assert perfil["codigo_paciente"] == "PAC-001"
     assert "flexion_codo" in perfil["ejercicios"]
     assert perfil["ejercicios"]["flexion_codo"]["lado"] == "auto"
+    assert perfil["ejercicios"]["abduccion_hombro"]["rango_objetivo"] == {
+        "minimo": 100,
+        "maximo": 120,
+    }
+    assert perfil["ejercicios"]["abduccion_hombro"]["excursion_minima_grados"] == 70.0
 
 
 def test_guardar_y_cargar_perfil_demo(tmp_path):

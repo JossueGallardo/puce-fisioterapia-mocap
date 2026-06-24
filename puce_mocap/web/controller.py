@@ -614,7 +614,7 @@ class PuceWebController:
             {"label": "Ángulo", "value": "N/D" if result.angulo_actual is None else f"{result.angulo_actual:.1f}°"},
             {"label": "Fase", "value": _phase_text(session.fase_actual) if self.rehab_recording else "En espera"},
             {"label": "Repeticiones", "value": str(session.repeticiones_estimadas)},
-            {"label": "En rango", "value": "Sí" if result.dentro_rango else "No"},
+            {"label": "Rango terapéutico", "value": "Sí" if result.dentro_rango else "No"},
         ]
         side_text = "derecha" if result.lado_evaluado == "right" else "izquierda"
         orientation = ORIENTACION_RECOMENDADA[self.rehab_exercise]
@@ -655,10 +655,11 @@ class PuceWebController:
                 )
             elif session.fase_actual == "buscando_objetivo":
                 target = self.rehab_profile["ejercicios"][self.rehab_exercise]["rango_objetivo"]
+                count_target = session.rango_objetivo_repeticion
                 self.status = (
                     f"Inicio calibrado en {session.angulo_referencia_inicio:.1f}°. "
-                    f"Alcance el rango objetivo "
-                    f"{target['minimo']:.0f}°–{target['maximo']:.0f}°."
+                    f"Para contar, alcance {count_target.minimo:.0f}°–{count_target.maximo:.0f}°. "
+                    f"Rango terapéutico: {target['minimo']:.0f}°–{target['maximo']:.0f}°."
                 )
             elif session.fase_actual == "regresando_inicio":
                 start = session.rango_inicio_calibrado
@@ -748,7 +749,7 @@ class PuceWebController:
                 {"label": "Ángulo", "value": "N/D"},
                 {"label": "Fase", "value": "En espera"},
                 {"label": "Repeticiones", "value": "0"},
-                {"label": "En rango", "value": "No"},
+                {"label": "Rango terapéutico", "value": "No"},
             ]
         else:
             self.metrics = [
